@@ -27,6 +27,7 @@ import {
   Settings,
   Logout,
   AccountCircle,
+  FamilyRestroom,
 } from '@mui/icons-material';
 import { ThemeToggle, LanguageSwitcher } from '@gym-management/ui-components';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +37,7 @@ const drawerWidth = 260;
 const menuItems = [
   { text: 'Dashboard', icon: <Dashboard />, path: '/' },
   { text: 'Students', icon: <People />, path: '/students' },
+  { text: 'Guardians', icon: <FamilyRestroom />, path: '/guardians' },
   { text: 'Graduations', icon: <EmojiEvents />, path: '/graduations' },
   { text: 'Financial', icon: <Payment />, path: '/financial' },
   { text: 'Products', icon: <Inventory />, path: '/products' },

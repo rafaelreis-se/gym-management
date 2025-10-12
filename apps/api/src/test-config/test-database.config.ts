@@ -1,4 +1,4 @@
-import { DataSource, DataSourceOptions } from 'typeorm';
+import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import {
   Student,
   Guardian,
@@ -15,14 +15,30 @@ import {
 } from '@gym-management/domain';
 
 /**
- * Configuration for in-memory SQLite database for integration tests
- * Simulates PostgreSQL behavior
+ * Configuration for PostgreSQL test database using Testcontainers
+ * 
+ * This uses a real PostgreSQL instance in Docker container for tests
+ * - 100% compatible with production database
+ * - Isolated and automatically cleaned up
+ * - Best practice for integration testing
+ * 
+ * Note: Requires Docker to be running
  */
-export const testDataSourceOptions: DataSourceOptions = {
-  type: 'sqlite',
-  database: ':memory:',
-  synchronize: true,
-  dropSchema: true,
+export const getTestDatabaseConfig = (
+  host: string,
+  port: number,
+  database: string,
+  username: string,
+  password: string
+): TypeOrmModuleOptions => ({
+  type: 'postgres',
+  host,
+  port,
+  database,
+  username,
+  password,
+  synchronize: true, // Auto-create schema for tests
+  dropSchema: true, // Clean schema before tests
   entities: [
     Student,
     Guardian,
@@ -38,9 +54,5 @@ export const testDataSourceOptions: DataSourceOptions = {
     SaleItem,
   ],
   logging: false,
-};
-
-export const createTestDataSource = () => {
-  return new DataSource(testDataSourceOptions);
-};
+});
 

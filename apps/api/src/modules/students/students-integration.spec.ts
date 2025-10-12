@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import {
+  PostgreSqlContainer,
+  StartedPostgreSqlContainer,
+} from '@testcontainers/postgresql';
 import { StudentsService } from './students.service';
 import { GuardiansService } from '../guardians/guardians.service';
 import { GraduationsService } from '../graduations/graduations.service';
@@ -10,7 +14,7 @@ import {
   StudentGuardian,
   Graduation,
 } from '@gym-management/domain';
-import { testDataSourceOptions } from '../../test-config/test-database.config';
+import { getTestDatabaseConfig } from '../../test-config/test-database.config';
 import {
   AgeCategory,
   StudentStatus,
@@ -21,6 +25,7 @@ import {
 } from '@gym-management/common';
 
 describe('Students Integration Tests', () => {
+  let postgresContainer: StartedPostgreSqlContainer;
   let module: TestingModule;
   let dataSource: DataSource;
   let studentsService: StudentsService;
@@ -28,9 +33,22 @@ describe('Students Integration Tests', () => {
   let graduationsService: GraduationsService;
 
   beforeAll(async () => {
+    // Start PostgreSQL container
+    postgresContainer = await new PostgreSqlContainer('postgres:16-alpine')
+      .withExposedPorts(5432)
+      .start();
+
+    const dbConfig = getTestDatabaseConfig(
+      postgresContainer.getHost(),
+      postgresContainer.getPort(),
+      postgresContainer.getDatabase(),
+      postgresContainer.getUsername(),
+      postgresContainer.getPassword()
+    );
+
     module = await Test.createTestingModule({
       imports: [
-        TypeOrmModule.forRoot(testDataSourceOptions),
+        TypeOrmModule.forRoot(dbConfig),
         TypeOrmModule.forFeature([
           Student,
           Guardian,
@@ -45,25 +63,35 @@ describe('Students Integration Tests', () => {
     studentsService = module.get<StudentsService>(StudentsService);
     guardiansService = module.get<GuardiansService>(GuardiansService);
     graduationsService = module.get<GraduationsService>(GraduationsService);
-  });
+  }, 60000);
 
   afterEach(async () => {
     // Clean up database after each test
-    await dataSource.getRepository(StudentGuardian).delete({});
-    await dataSource.getRepository(Graduation).delete({});
-    await dataSource.getRepository(Student).delete({});
-    await dataSource.getRepository(Guardian).delete({});
+    // Delete in correct order to respect foreign key constraints
+    if (dataSource?.isInitialized) {
+      await dataSource.query('DELETE FROM student_guardians');
+      await dataSource.query('DELETE FROM graduations');
+      await dataSource.query('DELETE FROM students');
+      await dataSource.query('DELETE FROM guardians');
+    }
   });
 
   afterAll(async () => {
-    await dataSource.destroy();
-    await module.close();
-  });
+    if (dataSource?.isInitialized) {
+      await dataSource.destroy();
+    }
+    if (module) {
+      await module.close();
+    }
+    if (postgresContainer) {
+      await postgresContainer.stop();
+    }
+  }, 30000);
 
   describe('Student Registration - Adult (Self-Responsible)', () => {
     it('should create an adult student who is their own financial responsible', async () => {
       // Arrange: Adult student data
-      const studentData = {
+      const studentData: any = {
         fullName: 'João Silva',
         email: 'joao@example.com',
         cpf: '12345678901',
@@ -97,7 +125,7 @@ describe('Students Integration Tests', () => {
   describe('Student Registration - Child with Guardian', () => {
     it('should create a child student with a new guardian', async () => {
       // Arrange: Guardian and child data
-      const guardianData = {
+      const guardianData: any = {
         fullName: 'Maria Silva (Mother)',
         email: 'maria@example.com',
         cpf: '98765432100',
@@ -112,7 +140,7 @@ describe('Students Integration Tests', () => {
         profession: 'Professora',
       };
 
-      const childData = {
+      const childData: any = {
         fullName: 'Pedro Silva (Filho)',
         email: 'pedro@example.com',
         cpf: '11122233344',
@@ -161,7 +189,7 @@ describe('Students Integration Tests', () => {
 
     it('should reuse existing guardian when registering second child', async () => {
       // Arrange: Create guardian and first child
-      const guardianData = {
+      const guardianData: any = {
         fullName: 'Carlos Santos (Father)',
         email: 'carlos@example.com',
         cpf: '55566677788',
@@ -172,7 +200,7 @@ describe('Students Integration Tests', () => {
         zipCode: '01111000',
       };
 
-      const firstChild = {
+      const firstChild: any = {
         fullName: 'Ana Santos (Filha 1)',
         email: 'ana@example.com',
         cpf: '22233344455',
@@ -186,7 +214,7 @@ describe('Students Integration Tests', () => {
         status: StudentStatus.ACTIVE,
       };
 
-      const secondChild = {
+      const secondChild: any = {
         fullName: 'Lucas Santos (Filho 2)',
         email: 'lucas@example.com',
         cpf: '33344455566',
@@ -206,7 +234,7 @@ describe('Students Integration Tests', () => {
       await guardiansService.linkToStudent({
         studentId: student1.id,
         guardianId: guardian.id,
-        relationship: GuardianRelationship.MOTHER,
+        relationship: GuardianRelationship.FATHER,
         isFinanciallyResponsible: true,
         isEmergencyContact: true,
         canPickUp: true,
@@ -222,7 +250,7 @@ describe('Students Integration Tests', () => {
       await guardiansService.linkToStudent({
         studentId: student2.id,
         guardianId: existingGuardian!.id,
-        relationship: GuardianRelationship.MOTHER,
+        relationship: GuardianRelationship.FATHER,
         isFinanciallyResponsible: true,
         isEmergencyContact: true,
         canPickUp: true,
@@ -241,7 +269,7 @@ describe('Students Integration Tests', () => {
 
     it('should use findOrCreate helper method to avoid duplicate guardians', async () => {
       // Arrange
-      const guardianData = {
+      const guardianData: any = {
         fullName: 'Patricia Lima',
         email: 'patricia@example.com',
         cpf: '99988877766',
@@ -270,7 +298,7 @@ describe('Students Integration Tests', () => {
   describe('Student Graduation Registration', () => {
     it('should register a graduation for a student', async () => {
       // Arrange: Create student
-      const studentData = {
+      const studentData: any = {
         fullName: 'Roberto Alves',
         email: 'roberto@example.com',
         cpf: '44455566677',
@@ -313,7 +341,7 @@ describe('Students Integration Tests', () => {
 
     it('should track multiple graduations for a student', async () => {
       // Arrange: Create student
-      const studentData = {
+      const studentData: any = {
         fullName: 'Fernanda Costa',
         email: 'fernanda@example.com',
         cpf: '66677788899',
@@ -361,7 +389,7 @@ describe('Students Integration Tests', () => {
   describe('Complex Scenarios', () => {
     it('should handle family with multiple children at different belt levels', async () => {
       // Arrange: Create family
-      const guardianData = {
+      const guardianData: any = {
         fullName: 'Rafael Mendes (Pai)',
         email: 'rafael@example.com',
         cpf: '88899900011',
@@ -374,8 +402,8 @@ describe('Students Integration Tests', () => {
 
       const guardian = await guardiansService.create(guardianData);
 
-      // Child 1: Teen
-      const teen = await studentsService.create({
+      // Child 1: Older child
+      const olderChild: any = {
         fullName: 'Guilherme Mendes (Filho 1)',
         email: 'guilherme@example.com',
         cpf: '77788899900',
@@ -385,12 +413,12 @@ describe('Students Integration Tests', () => {
         city: 'São Paulo',
         state: 'SP',
         zipCode: '05555000',
-        ageCategory: AgeCategory.ADULT,
+        ageCategory: AgeCategory.ADULT, // 15 years old, still considered adult in our system
         status: StudentStatus.ACTIVE,
-      });
+      };
 
-      // Child 2: Child
-      const child = await studentsService.create({
+      // Child 2: Younger child
+      const youngerChild: any = {
         fullName: 'Sofia Mendes (Filha 2)',
         email: 'sofia@example.com',
         cpf: '88899900022',
@@ -402,22 +430,26 @@ describe('Students Integration Tests', () => {
         zipCode: '05555000',
         ageCategory: AgeCategory.CHILD,
         status: StudentStatus.ACTIVE,
-      });
+      };
+
+      // Act: Create both students
+      const student1 = await studentsService.create(olderChild);
+      const student2 = await studentsService.create(youngerChild);
 
       // Link both to guardian
       await guardiansService.linkToStudent({
-        studentId: teen.id,
+        studentId: student1.id,
         guardianId: guardian.id,
-        relationship: GuardianRelationship.MOTHER,
+        relationship: GuardianRelationship.FATHER,
         isFinanciallyResponsible: true,
         isEmergencyContact: true,
         canPickUp: true,
       });
 
       await guardiansService.linkToStudent({
-        studentId: child.id,
+        studentId: student2.id,
         guardianId: guardian.id,
-        relationship: GuardianRelationship.MOTHER,
+        relationship: GuardianRelationship.FATHER,
         isFinanciallyResponsible: true,
         isEmergencyContact: true,
         canPickUp: true,
@@ -425,7 +457,7 @@ describe('Students Integration Tests', () => {
 
       // Register graduations
       await graduationsService.create({
-        studentId: teen.id,
+        studentId: student1.id,
         modality: Modality.JIU_JITSU,
         beltColor: BeltColor.GREEN,
         beltDegree: BeltDegree.DEGREE_2,
@@ -434,7 +466,7 @@ describe('Students Integration Tests', () => {
       });
 
       await graduationsService.create({
-        studentId: child.id,
+        studentId: student2.id,
         modality: Modality.JIU_JITSU,
         beltColor: BeltColor.YELLOW,
         beltDegree: BeltDegree.DEGREE_1,
@@ -446,16 +478,136 @@ describe('Students Integration Tests', () => {
       const guardianWithFamily = await guardiansService.findOne(guardian.id);
       expect(guardianWithFamily.studentGuardians).toHaveLength(2);
 
-      const teenGraduation = await graduationsService.getCurrentGraduation(
-        teen.id
+      const student1Graduation = await graduationsService.getCurrentGraduation(
+        student1.id
       );
-      expect(teenGraduation?.beltColor).toBe(BeltColor.GREEN);
+      expect(student1Graduation?.beltColor).toBe(BeltColor.GREEN);
 
-      const childGraduation = await graduationsService.getCurrentGraduation(
-        child.id
+      const student2Graduation = await graduationsService.getCurrentGraduation(
+        student2.id
       );
-      expect(childGraduation?.beltColor).toBe(BeltColor.YELLOW);
+      expect(student2Graduation?.beltColor).toBe(BeltColor.YELLOW);
+    });
+  });
+
+  describe('createWithGuardian Service Method', () => {
+    it('should create student with new guardian in one call', async () => {
+      // Arrange
+      const requestData: any = {
+        student: {
+          fullName: 'Lucas Oliveira',
+          email: 'lucas@example.com',
+          cpf: '11111111111',
+          birthDate: new Date('2014-04-10'),
+          phone: '11900000000',
+          address: 'Rua Nova, 100',
+          city: 'São Paulo',
+          state: 'SP',
+          zipCode: '06000000',
+          ageCategory: AgeCategory.CHILD,
+        },
+        guardian: {
+          fullName: 'Julia Oliveira',
+          email: 'julia@example.com',
+          cpf: '22222222222',
+          phone: '11900000000',
+          address: 'Rua Nova, 100',
+          city: 'São Paulo',
+          state: 'SP',
+          zipCode: '06000000',
+        },
+        guardianRelationship: {
+          relationship: GuardianRelationship.MOTHER,
+          isFinanciallyResponsible: true,
+          isEmergencyContact: true,
+          canPickUp: true,
+        },
+      };
+
+      // Act
+      const result = await studentsService.createWithGuardian(requestData);
+
+      // Assert
+      expect(result.student).toBeDefined();
+      expect(result.student.fullName).toBe('Lucas Oliveira');
+      expect(result.guardianId).toBeDefined();
+
+      // Verify guardian was created and linked
+      const guardian = await guardiansService.findOne(result.guardianId!);
+      expect(guardian.fullName).toBe('Julia Oliveira');
+      expect(guardian.studentGuardians).toHaveLength(1);
+    });
+
+    it('should reuse existing guardian when using createWithGuardian', async () => {
+      // Arrange: Create existing guardian
+      const existingGuardianData: any = {
+        fullName: 'Roberto Costa',
+        email: 'roberto@example.com',
+        cpf: '33333333333',
+        phone: '11800000000',
+        address: 'Rua Familiar, 200',
+        city: 'São Paulo',
+        state: 'SP',
+        zipCode: '07000000',
+      };
+
+      await guardiansService.create(existingGuardianData);
+
+      // Act: Create two children with same guardian CPF
+      const child1Data: any = {
+        student: {
+          fullName: 'Bruno Costa',
+          email: 'bruno@example.com',
+          cpf: '44444444444',
+          birthDate: new Date('2013-05-10'),
+          phone: '11800000000',
+          address: 'Rua Familiar, 200',
+          city: 'São Paulo',
+          state: 'SP',
+          zipCode: '07000000',
+          ageCategory: AgeCategory.CHILD,
+        },
+        guardian: existingGuardianData,
+        guardianRelationship: {
+          relationship: GuardianRelationship.FATHER,
+          isFinanciallyResponsible: true,
+        },
+      };
+
+      const child2Data: any = {
+        student: {
+          fullName: 'Carla Costa',
+          email: 'carla@example.com',
+          cpf: '55555555555',
+          birthDate: new Date('2015-08-20'),
+          phone: '11800000000',
+          address: 'Rua Familiar, 200',
+          city: 'São Paulo',
+          state: 'SP',
+          zipCode: '07000000',
+          ageCategory: AgeCategory.CHILD,
+        },
+        guardian: existingGuardianData,
+        guardianRelationship: {
+          relationship: GuardianRelationship.FATHER,
+          isFinanciallyResponsible: true,
+        },
+      };
+
+      const result1 = await studentsService.createWithGuardian(child1Data);
+      const result2 = await studentsService.createWithGuardian(child2Data);
+
+      // Assert: Both should have same guardian ID
+      expect(result1.guardianId).toBe(result2.guardianId);
+
+      // Verify only one guardian exists with that CPF
+      const allGuardians = await guardiansService.findAll();
+      const robertos = allGuardians.filter((g) => g.cpf === '33333333333');
+      expect(robertos).toHaveLength(1);
+
+      // Verify guardian has both children
+      const guardian = await guardiansService.findOne(result1.guardianId!);
+      expect(guardian.studentGuardians).toHaveLength(2);
     });
   });
 });
-

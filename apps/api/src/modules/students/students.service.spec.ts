@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { StudentsService } from './students.service';
+import { GuardiansService } from '../guardians/guardians.service';
 import { Student } from '@gym-management/domain';
 import { NotFoundException } from '@nestjs/common';
 
@@ -15,6 +16,12 @@ describe('StudentsService', () => {
     remove: jest.fn(),
   };
 
+  const mockGuardiansService = {
+    findOrCreate: jest.fn(),
+    linkToStudent: jest.fn(),
+    findByCpf: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -22,6 +29,10 @@ describe('StudentsService', () => {
         {
           provide: getRepositoryToken(Student),
           useValue: mockRepository,
+        },
+        {
+          provide: GuardiansService,
+          useValue: mockGuardiansService,
         },
       ],
     }).compile();

@@ -1,14 +1,17 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Enrollment, Student } from '@gym-management/domain';
+import { Enrollment } from '@gym-management/domain';
 import { EnrollmentsController } from './enrollments.controller';
 import { EnrollmentsService } from './enrollments.service';
-import { StudentsService } from '../students/students.service';
+import { StudentsModule } from '../students/students.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Enrollment, Student])],
+  imports: [
+    TypeOrmModule.forFeature([Enrollment]),
+    StudentsModule,
+  ],
   controllers: [EnrollmentsController],
-  providers: [EnrollmentsService, StudentsService],
+  providers: [EnrollmentsService],
   exports: [EnrollmentsService],
 })
 export class EnrollmentsModule {}

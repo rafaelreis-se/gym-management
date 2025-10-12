@@ -11,33 +11,23 @@ import {
   TableHead,
   TableRow,
   Typography,
-  Chip,
   IconButton,
   TextField,
   InputAdornment,
+  Chip,
 } from '@mui/material';
-import {
-  Add,
-  Edit,
-  Delete,
-  Search,
-  Visibility,
-} from '@mui/icons-material';
-import { BeltDisplay } from '@gym-management/ui-components';
-import { BeltColor, BeltDegree, StudentStatus } from '@gym-management/types';
+import { Add, Edit, Delete, Search, Person } from '@mui/icons-material';
 
 // Mock data for demonstration
-const mockStudents = [
+const mockGuardians = [
   {
     id: '1',
     fullName: 'Maria Silva',
     email: 'maria@example.com',
     cpf: '123.456.789-01',
     phone: '(11) 99999-9999',
-    status: StudentStatus.ACTIVE,
-    ageCategory: 'ADULT',
-    currentBelt: BeltColor.BLUE,
-    currentDegree: BeltDegree.DEGREE_2,
+    studentsCount: 2,
+    students: ['Pedro Silva', 'Ana Silva'],
   },
   {
     id: '2',
@@ -45,44 +35,27 @@ const mockStudents = [
     email: 'joao@example.com',
     cpf: '987.654.321-00',
     phone: '(11) 88888-8888',
-    status: StudentStatus.ACTIVE,
-    ageCategory: 'CHILD',
-    currentBelt: BeltColor.YELLOW,
-    currentDegree: BeltDegree.DEGREE_1,
+    studentsCount: 1,
+    students: ['Lucas Santos'],
   },
 ];
 
-export const StudentsListPage: React.FC = () => {
+export const GuardiansListPage: React.FC = () => {
   const navigate = useNavigate();
-
-  const getStatusColor = (status: StudentStatus) => {
-    switch (status) {
-      case StudentStatus.ACTIVE:
-        return 'success';
-      case StudentStatus.INACTIVE:
-        return 'default';
-      case StudentStatus.SUSPENDED:
-        return 'warning';
-      case StudentStatus.CANCELLED:
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
 
   return (
     <>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" fontWeight={700}>
-          Students Management
+          Guardians Management
         </Typography>
         <Button
           variant="contained"
           startIcon={<Add />}
-          onClick={() => navigate('/students/new')}
+          onClick={() => navigate('/guardians/new')}
           size="large"
         >
-          New Student
+          New Guardian
         </Button>
       </Box>
 
@@ -90,7 +63,7 @@ export const StudentsListPage: React.FC = () => {
         <Box p={2} borderBottom="1px solid #e5e7eb">
           <TextField
             fullWidth
-            placeholder="Search by name, email, or CPF..."
+            placeholder="Search guardians..."
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -112,13 +85,7 @@ export const StudentsListPage: React.FC = () => {
                   <Typography fontWeight={600}>Contact</Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography fontWeight={600}>Current Belt</Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography fontWeight={600}>Status</Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography fontWeight={600}>Category</Typography>
+                  <Typography fontWeight={600}>Students</Typography>
                 </TableCell>
                 <TableCell align="right">
                   <Typography fontWeight={600}>Actions</Typography>
@@ -126,48 +93,38 @@ export const StudentsListPage: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {mockStudents.map((student) => (
-                <TableRow key={student.id} hover>
+              {mockGuardians.map((guardian) => (
+                <TableRow key={guardian.id} hover>
                   <TableCell>
-                    <Typography fontWeight={600}>{student.fullName}</Typography>
+                    <Typography fontWeight={600}>{guardian.fullName}</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {student.cpf}
+                      CPF: {guardian.cpf}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{student.email}</Typography>
+                    <Typography variant="body2">{guardian.email}</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {student.phone}
+                      {guardian.phone}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <BeltDisplay
-                      beltColor={student.currentBelt}
-                      beltDegree={student.currentDegree}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={student.status}
-                      color={getStatusColor(student.status)}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Chip label={student.ageCategory} size="small" variant="outlined" />
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Chip
+                        icon={<Person />}
+                        label={`${guardian.studentsCount} student${guardian.studentsCount > 1 ? 's' : ''}`}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
+                    </Box>
+                    <Typography variant="caption" color="text.secondary">
+                      {guardian.students.join(', ')}
+                    </Typography>
                   </TableCell>
                   <TableCell align="right">
                     <IconButton
                       size="small"
-                      onClick={() => navigate(`/students/${student.id}`)}
-                      title="View Details"
-                    >
-                      <Visibility fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => navigate(`/students/${student.id}/edit`)}
+                      onClick={() => navigate(`/guardians/${guardian.id}/edit`)}
                       title="Edit"
                     >
                       <Edit fontSize="small" />
@@ -182,21 +139,21 @@ export const StudentsListPage: React.FC = () => {
           </Table>
         </TableContainer>
 
-        {mockStudents.length === 0 && (
+        {mockGuardians.length === 0 && (
           <Box p={8} textAlign="center">
-            <People sx={{ fontSize: 80, color: 'text.disabled', mb: 2 }} />
+            <Person sx={{ fontSize: 80, color: 'text.disabled', mb: 2 }} />
             <Typography variant="h6" color="text.secondary">
-              No students yet
+              No guardians yet
             </Typography>
             <Typography variant="body2" color="text.secondary" mb={3}>
-              Create your first student to get started
+              Guardians are automatically created when registering children students
             </Typography>
             <Button
               variant="contained"
               startIcon={<Add />}
-              onClick={() => navigate('/students/new')}
+              onClick={() => navigate('/guardians/new')}
             >
-              Add Student
+              Add Guardian
             </Button>
           </Box>
         )}

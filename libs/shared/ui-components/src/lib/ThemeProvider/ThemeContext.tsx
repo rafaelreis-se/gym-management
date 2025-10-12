@@ -18,7 +18,9 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType>({
   mode: 'light',
-  toggleTheme: () => {},
+  toggleTheme: () => {
+    // Default implementation (overridden by provider)
+  },
 });
 
 export const useThemeMode = () => useContext(ThemeContext);
