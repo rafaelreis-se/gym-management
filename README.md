@@ -1,101 +1,319 @@
-# GymManagement
+# Gym Management System
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+Complete management system for martial arts gyms (Jiu Jitsu and other modalities).
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+## 🚀 Features
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/nest?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+### Core Modules
 
-## Run tasks
+- **👥 Students Management**
 
-To run the dev server for your app, use:
+  - Complete student registration with personal data
+  - Medical observations and emergency contacts
+  - Student status tracking (Active, Inactive, Suspended, Cancelled)
+  - Age category classification (Child/Adult)
 
-```sh
-npx nx serve api
+- **📋 Enrollments**
+
+  - Student enrollment in specific modalities
+  - Plan assignment and tracking
+  - Enrollment period management
+  - Active/inactive status control
+
+- **🥋 Graduation System**
+
+  - Belt and degree tracking for Jiu Jitsu
+  - Complete graduation history
+  - Support for both adult and children belt systems
+  - Multiple modalities support
+
+- **💰 Financial Management**
+
+  - Payment tracking and installments
+  - Multiple payment methods (Cash, Card, Bank Slip, PIX, etc.)
+  - Payment status management
+  - Overdue payment tracking
+  - Membership plans (Monthly, Quarterly, Semi-annual, Annual)
+  - Discount management
+
+- **🛍️ Products & Sales**
+  - Sports equipment inventory (Kimonos, Belts, Shirts, etc.)
+  - Stock management
+  - Sales transactions
+  - Low stock alerts
+
+## 🏗️ Architecture
+
+### Monorepo Structure
+
+```
+gym-management/
+├── apps/
+│   └── api/                    # Main NestJS application
+│       ├── src/
+│       │   ├── app/           # App module and core files
+│       │   ├── config/        # Configuration files (Swagger, etc.)
+│       │   ├── middleware/    # Request ID middleware
+│       │   ├── modules/       # Domain modules
+│       │   │   ├── students/
+│       │   │   ├── enrollments/
+│       │   │   ├── graduations/
+│       │   │   ├── financial/
+│       │   │   └── products/
+│       │   └── validators/    # Custom validators (CPF, etc.)
+│       └── main.ts
+│
+└── libs/
+    └── shared/
+        ├── common/            # Shared utilities, enums, configs
+        │   ├── enums/         # Business enums
+        │   ├── config/        # Config module and schemas
+        │   ├── logger/        # Pino logger configuration
+        │   └── http/          # HTTP filters, pagination, etc.
+        │
+        ├── domain/            # Domain entities
+        │   └── entities/      # TypeORM entities
+        │
+        └── infrastructure/    # Infrastructure layer
+            └── database/      # Database config and abstracts
 ```
 
-To create a production bundle:
+### Technology Stack
 
-```sh
-npx nx build api
+- **Framework**: NestJS 11
+- **Runtime**: Node.js 20+
+- **Package Manager**: pnpm 10+
+- **Monorepo**: Nx 21
+- **Database**: PostgreSQL + TypeORM
+- **HTTP Server**: Fastify
+- **Validation**: class-validator + Joi
+- **Logging**: Pino + pino-pretty
+- **Documentation**: Swagger/OpenAPI
+- **Testing**: Jest
+
+### Design Patterns & Best Practices
+
+- ✅ **Clean Architecture** with layered approach (Domain, Application, Infrastructure)
+- ✅ **Repository Pattern** with abstract base repository
+- ✅ **DTOs** for request/response validation
+- ✅ **Global Exception Filter** for standardized error responses
+- ✅ **Request ID Middleware** for distributed tracing
+- ✅ **Environment Variables** validation with Joi schemas
+- ✅ **Code Coverage** thresholds (80% for shared libs)
+- ✅ **Swagger Documentation** auto-generated from decorators
+
+## 🚦 Getting Started
+
+### Prerequisites
+
+```bash
+node >= 20.0.0
+pnpm >= 10.0.0
+PostgreSQL >= 14
 ```
 
-To see all available targets to run for a project, run:
+### Installation
 
-```sh
-npx nx show project api
+```bash
+# Clone the repository
+git clone <repository-url>
+cd gym-management
+
+# Install dependencies
+pnpm install
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+### Environment Setup
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+1. Copy the example environment file:
 
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-Use the plugin's generator to create new projects.
-
-To generate a new application, use:
-
-```sh
-npx nx g @nx/nest:app demo
+```bash
+cp .env.example .env
 ```
 
-To generate a new library, use:
+2. Configure your environment variables:
 
-```sh
-npx nx g @nx/node:lib mylib
+```env
+# Application
+NODE_ENV=development
+PORT=3000
+SERVICE_NAME=gym-management-api
+
+# Logging
+LOG_LEVEL=info
+LOG_FORMAT=pretty
+
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=your_password
+DB_NAME=gym_management
+DB_SYNCHRONIZE=true  # Set to false in production
+DB_LOGGING=true
 ```
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+### Database Setup
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```bash
+# Create database
+createdb gym_management
 
-## Set up CI!
-
-### Step 1
-
-To connect to Nx Cloud, run the following command:
-
-```sh
-npx nx connect
+# Run migrations (when available)
+pnpm db:run
 ```
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+### Running the Application
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```bash
+# Development mode with hot reload
+pnpm dev
 
-### Step 2
+# Debug mode
+pnpm debug
 
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
+# Production mode
+pnpm build
+pnpm start
 ```
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+The API will be available at:
 
-## Install Nx Console
+- **API**: http://localhost:3000/api
+- **Swagger Docs**: http://localhost:3000/api/docs
+- **Health Check**: http://localhost:3000/api/health
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+## 🧪 Testing
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```bash
+# Run all tests
+pnpm test
 
-## Useful links
+# Watch mode
+pnpm test:watch
 
-Learn more:
+# Run affected tests only
+pnpm test:affected
 
-- [Learn more about this workspace setup](https://nx.dev/nx-api/nest?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+# Test coverage
+pnpm test:coverage
+```
 
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## 🔍 Linting & Formatting
+
+```bash
+# Lint affected files
+pnpm lint
+
+# Fix linting issues
+pnpm lint:fix
+
+# Format code
+pnpm lint:format
+```
+
+## 🏗️ Building
+
+```bash
+# Build API
+pnpm build
+
+# Build all projects
+pnpm build:all
+
+# Build only affected projects
+pnpm build:affected
+```
+
+## 📚 API Documentation
+
+### Swagger/OpenAPI
+
+Access the interactive API documentation at: http://localhost:3000/api/docs
+
+### Main Endpoints
+
+#### Students
+
+- `POST /api/students` - Create new student
+- `GET /api/students` - List all students
+- `GET /api/students/:id` - Get student by ID
+- `PATCH /api/students/:id` - Update student
+- `DELETE /api/students/:id` - Delete student
+
+#### Enrollments
+
+- `POST /api/enrollments` - Create enrollment
+- `GET /api/enrollments` - List all enrollments
+- `GET /api/enrollments/student/:studentId` - Get student enrollments
+
+#### Graduations
+
+- `POST /api/graduations` - Record graduation
+- `GET /api/graduations` - List all graduations
+- `GET /api/graduations/student/:studentId` - Get student graduations
+- `GET /api/graduations/student/:studentId/current` - Get current graduation
+
+#### Financial
+
+- `POST /api/financial/payments` - Create payment
+- `GET /api/financial/payments/pending` - List pending payments
+- `GET /api/financial/payments/overdue` - List overdue payments
+- `PATCH /api/financial/payments/:id/mark-as-paid` - Mark as paid
+- `POST /api/financial/plans` - Create plan
+- `GET /api/financial/plans/active` - List active plans
+
+#### Products
+
+- `POST /api/products` - Create product
+- `GET /api/products/active` - List active products
+- `GET /api/products/low-stock` - Check low stock products
+- `POST /api/products/sales` - Create sale
+- `GET /api/products/sales` - List sales
+
+## 🔧 Maintenance
+
+```bash
+# Clear node_modules
+pnpm clean
+
+# Deep clean (including dist)
+pnpm clean:all
+
+# Reset NX cache
+pnpm reset:cache
+```
+
+## 🎯 Graduation System
+
+### Adult Belt System
+
+- White → Blue → Purple → Brown → Black → Red/Black (Coral) → Red/White → Red
+
+### Children Belt System
+
+- Gray/White → Gray → Gray/Black
+- Yellow/White → Yellow → Yellow/Black
+- Orange/White → Orange → Orange/Black
+- Green/White → Green → Green/Black
+
+Each belt can have multiple degrees (stripes) to track progress within the belt level.
+
+## 📝 License
+
+MIT
+
+## 🤝 Contributing
+
+1. Create a feature branch
+2. Make your changes
+3. Run tests and linting
+4. Submit a pull request
+
+## 📧 Support
+
+For issues and questions, please open an issue in the repository.
+
+---
+
+**Built with ❤️ using NestJS, Nx, and PostgreSQL**

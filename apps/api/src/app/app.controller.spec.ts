@@ -13,9 +13,13 @@ describe('AppController', () => {
   });
 
   describe('getData', () => {
-    it('should return "Hello API"', () => {
+    it('should return API information', () => {
       const appController = app.get<AppController>(AppController);
-      expect(appController.getData()).toEqual({ message: 'Hello API' });
+      const result = appController.getData();
+      expect(result).toHaveProperty('name');
+      expect(result).toHaveProperty('version');
+      expect(result).toHaveProperty('description');
+      expect(result.name).toBe('Gym Management API');
     });
   });
 });

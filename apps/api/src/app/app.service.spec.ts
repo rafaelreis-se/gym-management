@@ -13,8 +13,22 @@ describe('AppService', () => {
   });
 
   describe('getData', () => {
-    it('should return "Hello API"', () => {
-      expect(service.getData()).toEqual({ message: 'Hello API' });
+    it('should return API information', () => {
+      const result = service.getData();
+      expect(result).toHaveProperty('name');
+      expect(result).toHaveProperty('version');
+      expect(result).toHaveProperty('description');
+      expect(result.name).toBe('Gym Management API');
+    });
+  });
+
+  describe('getHealth', () => {
+    it('should return health status', () => {
+      const result = service.getHealth();
+      expect(result).toHaveProperty('status');
+      expect(result).toHaveProperty('timestamp');
+      expect(result).toHaveProperty('uptime');
+      expect(result.status).toBe('ok');
     });
   });
 });
