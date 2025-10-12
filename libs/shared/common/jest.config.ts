@@ -13,6 +13,7 @@ export default {
     '!src/**/*.module.ts',
     '!src/**/*.enum.ts',
     '!src/**/*.schema.ts',
+    '!src/**/*.dto.ts',
     '!src/**/index.ts',
   ],
   coverageReporters: ['text', 'text-summary', 'html', 'lcov'],

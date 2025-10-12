@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Guardian, StudentGuardian } from '@gym-management/domain';
 import { GuardiansController } from './guardians.controller';

@@ -11,6 +11,7 @@ export default {
     'src/**/*.{ts,js}',
     '!src/**/*.spec.ts',
     '!src/**/*.module.ts',
+    '!src/**/*.dto.ts',
     '!src/**/index.ts',
   ],
   coverageReporters: ['text', 'text-summary', 'html', 'lcov'],

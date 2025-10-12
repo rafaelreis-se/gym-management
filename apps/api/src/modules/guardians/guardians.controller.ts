@@ -42,6 +42,11 @@ export class GuardiansController {
     return this.guardiansService.findOne(id);
   }
 
+  @Get('cpf/:cpf')
+  findByCpf(@Param('cpf') cpf: string) {
+    return this.guardiansService.findByCpf(cpf);
+  }
+
   @Get('student/:studentId')
   findByStudent(@Param('studentId') studentId: string) {
     return this.guardiansService.findByStudent(studentId);

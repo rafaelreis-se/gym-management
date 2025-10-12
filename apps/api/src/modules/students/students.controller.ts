@@ -39,6 +39,18 @@ export class StudentsController {
     return this.studentsService.create(createStudentDto);
   }
 
+  @Post('with-guardian')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create student with guardian (Admin only)' })
+  @ApiResponse({ status: 201, description: 'Student and guardian created successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid data' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
+  async createWithGuardian(@Body() createDto: any) {
+    return this.studentsService.createWithGuardian(createDto);
+  }
+
   @Get()
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.INSTRUCTOR)

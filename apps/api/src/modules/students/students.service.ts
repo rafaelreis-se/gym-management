@@ -1,20 +1,60 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Student } from '@gym-management/domain';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
+import { CreateStudentWithGuardianDto } from './dto/create-student-with-guardian.dto';
+import { GuardiansService } from '../guardians/guardians.service';
+import { AgeCategory } from '@gym-management/common';
 
 @Injectable()
 export class StudentsService {
   constructor(
     @InjectRepository(Student)
-    private readonly studentRepository: Repository<Student>
+    private readonly studentRepository: Repository<Student>,
+    @Inject(forwardRef(() => GuardiansService))
+    private readonly guardiansService: GuardiansService
   ) {}
 
   async create(createStudentDto: CreateStudentDto): Promise<Student> {
     const student = this.studentRepository.create(createStudentDto);
     return this.studentRepository.save(student);
+  }
+
+  /**
+   * Create student with optional guardian
+   * - For adult students: no guardian needed
+   * - For children: requires guardian
+   * - Reuses existing guardian if CPF already exists
+   */
+  async createWithGuardian(
+    dto: CreateStudentWithGuardianDto
+  ): Promise<{ student: Student; guardianId?: string }> {
+    // Create student first
+    const student = await this.create(dto.student);
+
+    // If guardian data provided and student is a child
+    if (dto.guardian && dto.student.ageCategory === AgeCategory.CHILD) {
+      // Find or create guardian (reuses if CPF exists)
+      const guardian = await this.guardiansService.findOrCreate(dto.guardian);
+
+      // Link guardian to student
+      await this.guardiansService.linkToStudent({
+        studentId: student.id,
+        guardianId: guardian.id,
+        relationship: dto.guardianRelationship?.relationship || 'OTHER' as any,
+        isFinanciallyResponsible:
+          dto.guardianRelationship?.isFinanciallyResponsible ?? true,
+        isEmergencyContact:
+          dto.guardianRelationship?.isEmergencyContact ?? true,
+        canPickUp: dto.guardianRelationship?.canPickUp ?? true,
+      });
+
+      return { student, guardianId: guardian.id };
+    }
+
+    return { student };
   }
 
   async findAll(): Promise<Student[]> {

@@ -39,6 +39,25 @@ export class GuardiansService {
     return guardian;
   }
 
+  async findByCpf(cpf: string): Promise<Guardian | null> {
+    return this.guardianRepository.findOne({
+      where: { cpf },
+      relations: ['studentGuardians', 'studentGuardians.student'],
+    });
+  }
+
+  async findOrCreate(createGuardianDto: CreateGuardianDto): Promise<Guardian> {
+    // Check if guardian already exists by CPF
+    const existing = await this.findByCpf(createGuardianDto.cpf);
+    
+    if (existing) {
+      return existing;
+    }
+
+    // Create new guardian
+    return this.create(createGuardianDto);
+  }
+
   async findByStudent(studentId: string): Promise<StudentGuardian[]> {
     return this.studentGuardianRepository.find({
       where: { studentId },

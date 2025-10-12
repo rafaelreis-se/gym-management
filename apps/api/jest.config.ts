@@ -11,8 +11,10 @@ export default {
     'src/**/*.{ts,js}',
     '!src/**/*.spec.ts',
     '!src/**/*.module.ts',
+    '!src/**/*.dto.ts',
     '!src/**/index.ts',
     '!src/main.ts',
+    '!src/test-config/**',
   ],
   coverageReporters: ['text', 'text-summary', 'html', 'lcov'],
   coverageThreshold: {
