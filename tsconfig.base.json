@@ -14,7 +14,17 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
-    "paths": {}
+    "paths": {
+      "@gym-management/common": ["libs/shared/common/src/index.ts"],
+      "@gym-management/domain": ["libs/shared/domain/src/index.ts"],
+      "@gym-management/infrastructure": [
+        "libs/shared/infrastructure/src/index.ts"
+      ],
+      "@gym-management/types": ["libs/shared/types/src/index.ts"],
+      "@gym-management/ui-components": [
+        "libs/shared/ui-components/src/index.ts"
+      ]
+    }
   },
   "exclude": ["node_modules", "tmp"]
 }

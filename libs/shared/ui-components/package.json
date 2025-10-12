@@ -1,0 +1,19 @@
+{
+  "name": "@gym-management/ui-components",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@gym-management/types": "*",
+    "@mui/material": "*",
+    "@mui/icons-material": "*",
+    "@emotion/react": "*",
+    "@emotion/styled": "*",
+    "react": "*",
+    "react-dom": "*",
+    "i18next": "*",
+    "react-i18next": "*",
+    "i18next-browser-languagedetector": "*"
+  }
+}
