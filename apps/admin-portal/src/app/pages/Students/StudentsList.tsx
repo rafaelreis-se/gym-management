@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -19,6 +19,11 @@ import {
   InputAdornment,
   CircularProgress,
   Alert,
+  TableSortLabel,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   Add,
@@ -44,6 +49,13 @@ interface Student {
 export const StudentsListPage: React.FC = () => {
   const navigate = useNavigate();
 
+  // Search and filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'ageCategory' | 'graduation'>(
+    'name'
+  );
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
   // Fetch students data from API
   const {
     data: studentsResponse,
@@ -59,7 +71,7 @@ export const StudentsListPage: React.FC = () => {
   const students = studentsResponse?.data || [];
 
   // Get current graduation (latest graduation) for a student
-  const getCurrentGraduation = (student: any) => {
+  const getCurrentGraduation = useCallback((student: any) => {
     if (!student.graduations || student.graduations.length === 0) {
       return null;
     }
@@ -72,7 +84,67 @@ export const StudentsListPage: React.FC = () => {
     );
 
     return sortedGraduations[0];
-  };
+  }, []);
+
+  // Filtered and sorted students
+  const filteredAndSortedStudents = useMemo(() => {
+    let filtered = students;
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      const digitsOnly = term.replace(/\D/g, ''); // Extract only digits from search
+
+      filtered = students.filter((student) => {
+        const nameMatch = student.fullName?.toLowerCase().includes(term);
+        const emailMatch = student.email?.toLowerCase().includes(term);
+
+        // Only search CPF if the search term has digits
+        let cpfMatch = false;
+        if (digitsOnly.length > 0) {
+          const studentCpf = student.cpf?.replace(/\D/g, '') || '';
+          cpfMatch = studentCpf.includes(digitsOnly);
+        }
+
+        return nameMatch || emailMatch || cpfMatch;
+      });
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      let aValue: string;
+      let bValue: string;
+
+      switch (sortBy) {
+        case 'name':
+          aValue = a.fullName.toLowerCase();
+          bValue = b.fullName.toLowerCase();
+          break;
+        case 'ageCategory':
+          aValue = a.ageCategory;
+          bValue = b.ageCategory;
+          break;
+        case 'graduation': {
+          const aGrad = getCurrentGraduation(a);
+          const bGrad = getCurrentGraduation(b);
+          aValue = aGrad?.belt?.name || '';
+          bValue = bGrad?.belt?.name || '';
+          break;
+        }
+        default:
+          aValue = a.fullName.toLowerCase();
+          bValue = b.fullName.toLowerCase();
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue.localeCompare(bValue);
+      } else {
+        return bValue.localeCompare(aValue);
+      }
+    });
+
+    return sorted;
+  }, [students, searchTerm, sortBy, sortOrder, getCurrentGraduation]);
 
   const getStatusColor = (status: string) => {
     switch (status?.toUpperCase()) {
@@ -125,17 +197,48 @@ export const StudentsListPage: React.FC = () => {
 
       <Card>
         <Box p={2} borderBottom="1px solid #e5e7eb">
-          <TextField
-            fullWidth
-            placeholder="Search by name, email, or CPF..."
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search />
-                </InputAdornment>
-              ),
-            }}
-          />
+          <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+            <Box flex={1} minWidth="300px">
+              <TextField
+                fullWidth
+                placeholder="Search by name, email, or CPF..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Box>
+
+            <FormControl sx={{ minWidth: 150 }}>
+              <InputLabel>Sort by</InputLabel>
+              <Select
+                value={sortBy}
+                onChange={(e) =>
+                  setSortBy(
+                    e.target.value as 'name' | 'ageCategory' | 'graduation'
+                  )
+                }
+                label="Sort by"
+              >
+                <MenuItem value="name">Name</MenuItem>
+                <MenuItem value="ageCategory">Age Category</MenuItem>
+                <MenuItem value="graduation">Belt/Graduation</MenuItem>
+              </Select>
+            </FormControl>
+
+            <Button
+              variant="outlined"
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              sx={{ minWidth: 100 }}
+            >
+              {sortOrder === 'asc' ? '↑ A-Z' : '↓ Z-A'}
+            </Button>
+          </Box>
         </Box>
 
         {isLoading && (
@@ -190,7 +293,7 @@ export const StudentsListPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {students.map((student: Student) => (
+                  {filteredAndSortedStudents.map((student: Student) => (
                     <TableRow key={student.id} hover>
                       <TableCell>
                         <Typography
@@ -271,7 +374,7 @@ export const StudentsListPage: React.FC = () => {
 
             {/* Mobile Cards */}
             <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-              {students.map((student: Student) => {
+              {filteredAndSortedStudents.map((student: Student) => {
                 const currentGraduation = getCurrentGraduation(student);
                 return (
                   <Card
@@ -382,6 +485,19 @@ export const StudentsListPage: React.FC = () => {
             </Box>
           </>
         )}
+
+        {!isLoading &&
+          filteredAndSortedStudents.length === 0 &&
+          students.length > 0 && (
+            <Box p={4} textAlign="center">
+              <Typography variant="h6" color="text.secondary">
+                No students found
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Try adjusting your search terms
+              </Typography>
+            </Box>
+          )}
 
         {!isLoading && students.length === 0 && (
           <Box p={8} textAlign="center">
