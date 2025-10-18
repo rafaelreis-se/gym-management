@@ -93,11 +93,19 @@ export const StudentsListPage: React.FC = () => {
     <>
       <Box
         display="flex"
+        flexDirection={{ xs: 'column', sm: 'row' }}
         justifyContent="space-between"
-        alignItems="center"
+        alignItems={{ xs: 'flex-start', sm: 'center' }}
+        gap={2}
         mb={3}
       >
-        <Typography variant="h4" fontWeight={700}>
+        <Typography
+          variant="h4"
+          fontWeight={700}
+          sx={{
+            fontSize: { xs: '1.5rem', sm: '2.125rem' },
+          }}
+        >
           Students Management
         </Typography>
         <Button
@@ -105,6 +113,11 @@ export const StudentsListPage: React.FC = () => {
           startIcon={<Add />}
           onClick={() => navigate('/students/new')}
           size="large"
+          sx={{
+            alignSelf: { xs: 'stretch', sm: 'auto' },
+            fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+            padding: { xs: '8px 16px', sm: '10px 24px' },
+          }}
         >
           New Student
         </Button>

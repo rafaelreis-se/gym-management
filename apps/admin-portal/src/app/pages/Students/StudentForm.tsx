@@ -250,7 +250,7 @@ export const StudentFormPage: React.FC = () => {
         <Grid container spacing={3}>
           {/* Personal Information */}
           <Grid item xs={12} lg={4}>
-            <Card sx={{ height: '100%' }}>
+            <Card sx={{ height: '100%', width: '100%', maxWidth: '100%' }}>
               <CardContent>
                 <Typography variant="h6" fontWeight={600} mb={3}>
                   Personal Information
@@ -338,7 +338,7 @@ export const StudentFormPage: React.FC = () => {
 
           {/* Address */}
           <Grid item xs={12} lg={4}>
-            <Card sx={{ height: '100%' }}>
+            <Card sx={{ height: '100%', width: '100%', maxWidth: '100%' }}>
               <CardContent>
                 <Typography variant="h6" fontWeight={600} mb={3}>
                   Address
@@ -395,7 +395,7 @@ export const StudentFormPage: React.FC = () => {
 
           {/* Student Information */}
           <Grid item xs={12} lg={4}>
-            <Card sx={{ height: '100%' }}>
+            <Card sx={{ height: '100%', width: '100%', maxWidth: '100%' }}>
               <CardContent>
                 <Typography variant="h6" fontWeight={600} mb={3}>
                   Student Information
@@ -447,7 +447,7 @@ export const StudentFormPage: React.FC = () => {
                       fullWidth
                       label="Medical Observations"
                       multiline
-                      rows={2}
+                      rows={4}
                       value={formData.medicalObservations}
                       onChange={handleChange('medicalObservations')}
                       placeholder="Any medical conditions, allergies, etc..."
@@ -459,7 +459,7 @@ export const StudentFormPage: React.FC = () => {
                       fullWidth
                       label="Notes"
                       multiline
-                      rows={2}
+                      rows={3}
                       value={formData.notes}
                       onChange={handleChange('notes')}
                       placeholder="Additional notes..."
