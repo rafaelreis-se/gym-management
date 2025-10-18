@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box,
@@ -48,6 +49,7 @@ interface Student {
 
 export const StudentsListPage: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -161,6 +163,21 @@ export const StudentsListPage: React.FC = () => {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status?.toUpperCase()) {
+      case 'ACTIVE':
+        return t('status.active');
+      case 'INACTIVE':
+        return t('status.inactive');
+      case 'SUSPENDED':
+        return t('status.suspended');
+      case 'CANCELLED':
+        return t('status.cancelled');
+      default:
+        return t('status.active');
+    }
+  };
+
   return (
     <>
       <Box
@@ -178,7 +195,7 @@ export const StudentsListPage: React.FC = () => {
             fontSize: { xs: '1.5rem', sm: '2.125rem' },
           }}
         >
-          Students Management
+          {t('students.title')}
         </Typography>
         <Button
           variant="contained"
@@ -191,7 +208,7 @@ export const StudentsListPage: React.FC = () => {
             padding: { xs: '8px 16px', sm: '10px 24px' },
           }}
         >
-          New Student
+          {t('students.new')}
         </Button>
       </Box>
 
@@ -201,7 +218,7 @@ export const StudentsListPage: React.FC = () => {
             <Box flex={1} minWidth="300px">
               <TextField
                 fullWidth
-                placeholder="Search by name, email, or CPF..."
+                placeholder={t('students.search-placeholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 InputProps={{
@@ -215,7 +232,7 @@ export const StudentsListPage: React.FC = () => {
             </Box>
 
             <FormControl sx={{ minWidth: 150 }}>
-              <InputLabel>Sort by</InputLabel>
+              <InputLabel>{t('students.sort-by')}</InputLabel>
               <Select
                 value={sortBy}
                 onChange={(e) =>
@@ -223,11 +240,15 @@ export const StudentsListPage: React.FC = () => {
                     e.target.value as 'name' | 'ageCategory' | 'graduation'
                   )
                 }
-                label="Sort by"
+                label={t('students.sort-by')}
               >
-                <MenuItem value="name">Name</MenuItem>
-                <MenuItem value="ageCategory">Age Category</MenuItem>
-                <MenuItem value="graduation">Belt/Graduation</MenuItem>
+                <MenuItem value="name">{t('students.sort-name')}</MenuItem>
+                <MenuItem value="ageCategory">
+                  {t('students.sort-category')}
+                </MenuItem>
+                <MenuItem value="graduation">
+                  {t('students.sort-belt')}
+                </MenuItem>
               </Select>
             </FormControl>
 
@@ -273,22 +294,34 @@ export const StudentsListPage: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>
-                      <Typography fontWeight={600}>Student</Typography>
+                      <Typography fontWeight={600}>
+                        {t('students.name')}
+                      </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography fontWeight={600}>Contact</Typography>
+                      <Typography fontWeight={600}>
+                        {t('students.contact')}
+                      </Typography>
                     </TableCell>
                     <TableCell align="center">
-                      <Typography fontWeight={600}>Category</Typography>
+                      <Typography fontWeight={600}>
+                        {t('students.category')}
+                      </Typography>
                     </TableCell>
                     <TableCell align="center">
-                      <Typography fontWeight={600}>Current Belt</Typography>
+                      <Typography fontWeight={600}>
+                        {t('students.current-belt')}
+                      </Typography>
                     </TableCell>
                     <TableCell align="center">
-                      <Typography fontWeight={600}>Status</Typography>
+                      <Typography fontWeight={600}>
+                        {t('students.status')}
+                      </Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Typography fontWeight={600}>Actions</Typography>
+                      <Typography fontWeight={600}>
+                        {t('students.actions')}
+                      </Typography>
                     </TableCell>
                   </TableRow>
                 </TableHead>
@@ -314,7 +347,7 @@ export const StudentsListPage: React.FC = () => {
                       </TableCell>
                       <TableCell align="center">
                         <Chip
-                          label={student.ageCategory || 'Not Set'}
+                          label={student.ageCategory || t('students.not-set')}
                           variant="outlined"
                           size="small"
                         />
@@ -335,14 +368,14 @@ export const StudentsListPage: React.FC = () => {
                               variant="caption"
                               color="text.secondary"
                             >
-                              No belt
+                              {t('students.no-belt')}
                             </Typography>
                           );
                         })()}
                       </TableCell>
                       <TableCell align="center">
                         <Chip
-                          label={student.status || 'Active'}
+                          label={getStatusLabel(student.status || 'ACTIVE')}
                           color={getStatusColor(student.status)}
                           size="small"
                         />
@@ -405,7 +438,7 @@ export const StudentsListPage: React.FC = () => {
                           </Typography>
                         </Box>
                         <Chip
-                          label={student.status || 'Active'}
+                          label={getStatusLabel(student.status || 'ACTIVE')}
                           color={getStatusColor(student.status)}
                           size="small"
                         />
@@ -426,7 +459,7 @@ export const StudentsListPage: React.FC = () => {
                           </Typography>
                         </Box>
                         <Chip
-                          label={student.ageCategory || 'Not Set'}
+                          label={student.ageCategory || t('students.not-set')}
                           variant="outlined"
                           size="small"
                         />
@@ -439,7 +472,7 @@ export const StudentsListPage: React.FC = () => {
                       >
                         <Box display="flex" alignItems="center" gap={1}>
                           <Typography variant="body2" color="text.secondary">
-                            Current Belt:
+                            {t('students.current-belt')}:
                           </Typography>
                           {currentGraduation ? (
                             <BeltDisplay
@@ -453,7 +486,7 @@ export const StudentsListPage: React.FC = () => {
                               variant="caption"
                               color="text.secondary"
                             >
-                              No belt
+                              {t('students.no-belt')}
                             </Typography>
                           )}
                         </Box>
@@ -491,10 +524,10 @@ export const StudentsListPage: React.FC = () => {
           students.length > 0 && (
             <Box p={4} textAlign="center">
               <Typography variant="h6" color="text.secondary">
-                No students found
+                {t('students.no-students-found')}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Try adjusting your search terms
+                {t('students.adjust-search-terms')}
               </Typography>
             </Box>
           )}

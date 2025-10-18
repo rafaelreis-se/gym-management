@@ -38,21 +38,22 @@ import { useAuth } from '../hooks/useAuth';
 
 const drawerWidth = 260;
 
-const menuItems = [
-  { text: 'Dashboard', icon: <Dashboard />, path: '/' },
-  { text: 'Students', icon: <People />, path: '/students' },
-  { text: 'Guardians', icon: <FamilyRestroom />, path: '/guardians' },
-  { text: 'Graduations', icon: <EmojiEvents />, path: '/graduations' },
-  { text: 'Financial', icon: <Payment />, path: '/financial' },
-  { text: 'Products', icon: <Inventory />, path: '/products' },
-  { text: 'Reports', icon: <Assessment />, path: '/reports' },
-  { text: 'Settings', icon: <Settings />, path: '/settings' },
+const getMenuItems = (t: (key: string) => string) => [
+  { text: t('nav.dashboard'), icon: <Dashboard />, path: '/' },
+  { text: t('nav.students'), icon: <People />, path: '/students' },
+  { text: t('nav.guardians'), icon: <FamilyRestroom />, path: '/guardians' },
+  { text: t('nav.graduations'), icon: <EmojiEvents />, path: '/graduations' },
+  { text: t('nav.financial'), icon: <Payment />, path: '/financial' },
+  { text: t('nav.products'), icon: <Inventory />, path: '/products' },
+  { text: t('nav.reports'), icon: <Assessment />, path: '/reports' },
+  { text: t('nav.settings'), icon: <Settings />, path: '/settings' },
 ];
 
 export const AdminLayout: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const { user, logout, isAdmin, isInstructor } = useAuth();
+  const menuItems = getMenuItems(t);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const theme = useTheme();

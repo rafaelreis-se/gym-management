@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import * as ReactDOM from 'react-dom/client';
 import './i18n'; // Initialize i18n
+import 'react-toastify/dist/ReactToastify.css';
 import App from './app/app';
 
 const root = ReactDOM.createRoot(

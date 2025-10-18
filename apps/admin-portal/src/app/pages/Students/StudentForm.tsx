@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'react-toastify';
 import {
   Box,
   Button,
@@ -20,14 +22,7 @@ import {
   CircularProgress,
   Divider,
 } from '@mui/material';
-import {
-  ArrowBack,
-  Save,
-  Search,
-  Person,
-  Close,
-  CheckCircle,
-} from '@mui/icons-material';
+import { ArrowBack, Save, Search, Person, Close } from '@mui/icons-material';
 import {
   AgeCategory,
   StudentStatus,
@@ -52,13 +47,21 @@ interface Guardian {
   notes?: string;
 }
 
-export const StudentFormPage: React.FC = () => {
+function StudentForm() {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
-  // Student form data
+  // Fetch student data for edit mode
+  const { data: studentData } = useQuery({
+    queryKey: ['student', id],
+    queryFn: () => studentsService.getById(id!),
+    enabled: !!id,
+  });
+
+  // Form data
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -100,7 +103,37 @@ export const StudentFormPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchingGuardian, setSearchingGuardian] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+
+  // Populate form when editing
+  useEffect(() => {
+    if (studentData?.data && isEdit) {
+      const student = studentData.data;
+      setFormData({
+        fullName: student.fullName || '',
+        email: student.email || '',
+        cpf: student.cpf || '',
+        rg: student.rg || '',
+        birthDate: student.birthDate
+          ? new Date(student.birthDate).toISOString().split('T')[0]
+          : '',
+        phone: student.phone || '',
+        emergencyPhone: student.emergencyPhone || '',
+        address: student.address || '',
+        city: student.city || '',
+        state: student.state || '',
+        zipCode: student.zipCode || '',
+        ageCategory: student.ageCategory || AgeCategory.ADULT,
+        status: student.status || StudentStatus.ACTIVE,
+        medicalObservations: student.medicalObservations || '',
+        notes: student.notes || '',
+      });
+
+      // If student has guardian, set it as existing guardian
+      if (student.guardians && student.guardians.length > 0) {
+        setExistingGuardian(student.guardians[0]);
+      }
+    }
+  }, [studentData, isEdit]);
 
   const handleChange = (field: string) => (event: any) => {
     setFormData({ ...formData, [field]: event.target.value });
@@ -122,7 +155,15 @@ export const StudentFormPage: React.FC = () => {
 
   const searchGuardianByCpf = async () => {
     if (!guardianCpf || guardianCpf.length < 11) {
-      setError('Please enter a valid CPF');
+      const errorMessage = t('error.invalid-cpf');
+      setError(errorMessage);
+
+      // Show error toast
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 4000,
+      });
+
       return;
     }
 
@@ -135,6 +176,10 @@ export const StudentFormPage: React.FC = () => {
       if (guardian) {
         setExistingGuardian(guardian);
         setShowGuardianForm(false);
+        toast.success(t('success.guardian-found'), {
+          position: 'top-right',
+          autoClose: 2000,
+        });
       } else {
         // Guardian not found, show form to create new
         setExistingGuardian(null);
@@ -143,9 +188,21 @@ export const StudentFormPage: React.FC = () => {
           ...guardianData,
           cpf: guardianCpf,
         });
+        toast.info(t('info.guardian-not-found'), {
+          position: 'top-right',
+          autoClose: 3000,
+        });
       }
     } catch (err: any) {
-      setError('Error searching for guardian. Please try again.');
+      const errorMessage = t('error.guardian-search');
+      setError(errorMessage);
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 4000,
+      });
+
+      // Scroll to top to show the error alert as well
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSearchingGuardian(false);
     }
@@ -160,58 +217,115 @@ export const StudentFormPage: React.FC = () => {
       const isChild = formData.ageCategory === AgeCategory.CHILD;
 
       if (isChild && !existingGuardian && !showGuardianForm) {
-        setError(
-          'Children require a guardian. Please search for or add a guardian.'
-        );
+        const errorMessage = t('error.children-require-guardian');
+        setError(errorMessage);
+
+        // Show error toast
+        toast.error(errorMessage, {
+          position: 'top-right',
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+
+        // Scroll to top to show the error alert as well
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
         setLoading(false);
         return;
       }
 
       let requestData: any;
 
-      if (isChild && (existingGuardian || showGuardianForm)) {
-        // Create student with guardian
-        requestData = {
-          student: {
-            ...formData,
-            birthDate: new Date(formData.birthDate),
-          },
-          guardian: existingGuardian || {
-            ...guardianData,
-            birthDate: guardianData.birthDate
-              ? new Date(guardianData.birthDate)
-              : undefined,
-          },
-          guardianRelationship: {
-            relationship: guardianRelationship,
-            isFinanciallyResponsible: true,
-            isEmergencyContact: true,
-            canPickUp: true,
-          },
-        };
-
-        await studentsService.createWithGuardian(requestData);
-      } else {
-        // Create student only (adult)
+      if (isEdit) {
+        // Update existing student
         requestData = {
           ...formData,
           birthDate: new Date(formData.birthDate),
         };
 
-        await studentsService.create(requestData);
+        await studentsService.update(id!, requestData);
+      } else {
+        // Create new student
+        if (isChild && (existingGuardian || showGuardianForm)) {
+          // Create student with guardian
+          requestData = {
+            student: {
+              ...formData,
+              birthDate: new Date(formData.birthDate),
+            },
+            guardian: existingGuardian || {
+              ...guardianData,
+              birthDate: guardianData.birthDate
+                ? new Date(guardianData.birthDate)
+                : undefined,
+            },
+            guardianRelationship: {
+              relationship: guardianRelationship,
+              isFinanciallyResponsible: true,
+              isEmergencyContact: true,
+              canPickUp: true,
+            },
+          };
+
+          await studentsService.createWithGuardian(requestData);
+        } else {
+          // Create student only (adult)
+          requestData = {
+            ...formData,
+            birthDate: new Date(formData.birthDate),
+          };
+
+          await studentsService.create(requestData);
+        }
       }
 
       // Invalidate students cache to refresh the list
       await queryClient.invalidateQueries({ queryKey: ['students'] });
 
-      setSuccess(true);
+      // Show success toast
+      if (isEdit) {
+        toast.success(t('students.updated-success'), {
+          position: 'top-right',
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      } else {
+        toast.success(t('students.created-success'), {
+          position: 'top-right',
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      }
+
       setTimeout(() => {
         navigate('/students');
-      }, 2000);
+      }, 1500);
     } catch (err: any) {
-      setError(
-        err.response?.data?.message || 'Error saving student. Please try again.'
-      );
+      const errorMessage =
+        err.response?.data?.message || t('error.saving-student');
+      setError(errorMessage);
+
+      // Show error toast
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
+      // Scroll to top to show the error alert as well
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
     }
@@ -230,19 +344,13 @@ export const StudentFormPage: React.FC = () => {
           Back
         </Button>
         <Typography variant="h4" fontWeight={700}>
-          {isEdit ? 'Edit Student' : 'New Student'}
+          {isEdit ? t('students.edit-student') : t('students.add-student')}
         </Typography>
       </Box>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
-        </Alert>
-      )}
-
-      {success && (
-        <Alert severity="success" sx={{ mb: 3 }} icon={<CheckCircle />}>
-          Student saved successfully! Redirecting...
         </Alert>
       )}
 
@@ -260,7 +368,7 @@ export const StudentFormPage: React.FC = () => {
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
-                      label="Full Name"
+                      label={t('students.form.full-name')}
                       required
                       value={formData.fullName}
                       onChange={handleChange('fullName')}
@@ -270,7 +378,7 @@ export const StudentFormPage: React.FC = () => {
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
-                      label="Email"
+                      label={t('students.form.email')}
                       type="email"
                       required
                       value={formData.email}
@@ -281,7 +389,7 @@ export const StudentFormPage: React.FC = () => {
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
-                      label="CPF"
+                      label={t('students.form.cpf')}
                       required
                       placeholder="12345678901"
                       value={formData.cpf}
@@ -293,7 +401,7 @@ export const StudentFormPage: React.FC = () => {
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
-                      label="RG"
+                      label={t('students.form.rg')}
                       value={formData.rg}
                       onChange={handleChange('rg')}
                     />
@@ -302,7 +410,7 @@ export const StudentFormPage: React.FC = () => {
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
-                      label="Birth Date"
+                      label={t('students.form.birth-date')}
                       type="date"
                       required
                       InputLabelProps={{ shrink: true }}
@@ -314,7 +422,7 @@ export const StudentFormPage: React.FC = () => {
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
-                      label="Phone"
+                      label={t('students.form.phone')}
                       required
                       placeholder="11999999999"
                       value={formData.phone}
@@ -325,7 +433,7 @@ export const StudentFormPage: React.FC = () => {
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
-                      label="Emergency Phone"
+                      label={t('students.form.emergency-phone')}
                       placeholder="11988888888"
                       value={formData.emergencyPhone}
                       onChange={handleChange('emergencyPhone')}
@@ -341,14 +449,14 @@ export const StudentFormPage: React.FC = () => {
             <Card sx={{ height: '100%', width: '100%', maxWidth: '100%' }}>
               <CardContent>
                 <Typography variant="h6" fontWeight={600} mb={3}>
-                  Address
+                  {t('students.form.address')}
                 </Typography>
 
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
-                      label="Street Address"
+                      label={t('students.form.address')}
                       required
                       value={formData.address}
                       onChange={handleChange('address')}
@@ -358,7 +466,7 @@ export const StudentFormPage: React.FC = () => {
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
-                      label="City"
+                      label={t('students.form.city')}
                       required
                       value={formData.city}
                       onChange={handleChange('city')}
@@ -368,7 +476,7 @@ export const StudentFormPage: React.FC = () => {
                   <Grid item xs={6}>
                     <TextField
                       fullWidth
-                      label="State"
+                      label={t('students.form.state')}
                       required
                       placeholder="SP"
                       value={formData.state}
@@ -380,7 +488,7 @@ export const StudentFormPage: React.FC = () => {
                   <Grid item xs={6}>
                     <TextField
                       fullWidth
-                      label="ZIP Code"
+                      label={t('students.form.zip-code')}
                       required
                       placeholder="01234567"
                       value={formData.zipCode}
@@ -858,7 +966,7 @@ export const StudentFormPage: React.FC = () => {
                 size="large"
                 disabled={loading}
               >
-                Cancel
+                {t('students.form.cancel')}
               </Button>
               <Button
                 type="submit"
@@ -867,14 +975,17 @@ export const StudentFormPage: React.FC = () => {
                 size="large"
                 disabled={
                   loading ||
-                  (isChildCategory && !existingGuardian && !showGuardianForm)
+                  (!isEdit &&
+                    isChildCategory &&
+                    !existingGuardian &&
+                    !showGuardianForm)
                 }
               >
                 {loading
-                  ? 'Saving...'
+                  ? t('students.form.saving')
                   : isEdit
-                  ? 'Update Student'
-                  : 'Create Student'}
+                  ? t('students.form.update-student')
+                  : t('students.form.create-student')}
               </Button>
             </Box>
           </Grid>
@@ -882,4 +993,7 @@ export const StudentFormPage: React.FC = () => {
       </form>
     </>
   );
-};
+}
+
+export default StudentForm;
+export { StudentForm as StudentFormPage };
