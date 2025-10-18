@@ -1,14 +1,25 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { DataSource } from 'typeorm';
 
 describe('AppController', () => {
   let app: TestingModule;
 
+  const mockDataSource = {
+    query: jest.fn().mockResolvedValue([{ version: '1.0' }]),
+  };
+
   beforeAll(async () => {
     app = await Test.createTestingModule({
       controllers: [AppController],
-      providers: [AppService],
+      providers: [
+        AppService,
+        {
+          provide: DataSource,
+          useValue: mockDataSource,
+        },
+      ],
     }).compile();
   });
 

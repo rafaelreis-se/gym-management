@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CssBaseline } from '@mui/material';
@@ -12,33 +13,105 @@ import {
 import { GraduationsListPage } from './pages/Graduations';
 import { GuardiansListPage, GuardianFormPage } from './pages/Guardians';
 import { LoginPage } from './pages/Login';
+import { ProtectedRoute, StaffRoute } from './components/ProtectedRoute';
+import { authService } from './services/auth.service';
 
 const queryClient = new QueryClient();
 
 export function App() {
+  useEffect(() => {
+    // Initialize auth service on app start
+    authService.initialize();
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <AppThemeProvider adminMode>
         <CssBaseline />
         <BrowserRouter>
           <Routes>
+            {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/" element={<AdminLayout />}>
+
+            {/* Protected Routes */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<DashboardPage />} />
-              
-              {/* Students Routes */}
-              <Route path="students" element={<StudentsListPage />} />
-              <Route path="students/new" element={<StudentFormPage />} />
-              <Route path="students/:id" element={<StudentDetailsPage />} />
-              <Route path="students/:id/edit" element={<StudentFormPage />} />
-              
-              {/* Guardians Routes */}
-              <Route path="guardians" element={<GuardiansListPage />} />
-              <Route path="guardians/new" element={<GuardianFormPage />} />
-              <Route path="guardians/:id/edit" element={<GuardianFormPage />} />
-              
-              {/* Graduations Routes */}
-              <Route path="graduations" element={<GraduationsListPage />} />
+
+              {/* Students Routes - Require Staff Role */}
+              <Route
+                path="students"
+                element={
+                  <StaffRoute>
+                    <StudentsListPage />
+                  </StaffRoute>
+                }
+              />
+              <Route
+                path="students/new"
+                element={
+                  <StaffRoute>
+                    <StudentFormPage />
+                  </StaffRoute>
+                }
+              />
+              <Route
+                path="students/:id"
+                element={
+                  <StaffRoute>
+                    <StudentDetailsPage />
+                  </StaffRoute>
+                }
+              />
+              <Route
+                path="students/:id/edit"
+                element={
+                  <StaffRoute>
+                    <StudentFormPage />
+                  </StaffRoute>
+                }
+              />
+
+              {/* Guardians Routes - Require Staff Role */}
+              <Route
+                path="guardians"
+                element={
+                  <StaffRoute>
+                    <GuardiansListPage />
+                  </StaffRoute>
+                }
+              />
+              <Route
+                path="guardians/new"
+                element={
+                  <StaffRoute>
+                    <GuardianFormPage />
+                  </StaffRoute>
+                }
+              />
+              <Route
+                path="guardians/:id/edit"
+                element={
+                  <StaffRoute>
+                    <GuardianFormPage />
+                  </StaffRoute>
+                }
+              />
+
+              {/* Graduations Routes - Require Staff Role */}
+              <Route
+                path="graduations"
+                element={
+                  <StaffRoute>
+                    <GraduationsListPage />
+                  </StaffRoute>
+                }
+              />
             </Route>
           </Routes>
         </BrowserRouter>

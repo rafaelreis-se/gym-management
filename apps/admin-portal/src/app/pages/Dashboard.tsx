@@ -30,9 +30,22 @@ const StatCard = ({ title, value, icon, color }: any) => (
 );
 
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
+import { dashboardService } from '../services/dashboard.service';
 
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
+
+  // Fetch dashboard stats from API
+  const {
+    data: stats,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: dashboardService.getStats,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
 
   return (
     <>
@@ -41,42 +54,59 @@ export const DashboardPage: React.FC = () => {
       </Typography>
 
       <Grid container spacing={3} sx={{ mt: 1 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             title="Total Students"
-            value="0"
+            value={isLoading ? '...' : stats?.totalStudents?.toString() || '0'}
             icon={<People />}
             color="primary"
           />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             title="Revenue This Month"
-            value="R$ 0"
+            value={isLoading ? '...' : `R$ ${stats?.revenueThisMonth || 0}`}
             icon={<AttachMoney />}
             color="success"
           />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             title="Active Enrollments"
-            value="0"
+            value={
+              isLoading ? '...' : stats?.activeEnrollments?.toString() || '0'
+            }
             icon={<TrendingUp />}
             color="info"
           />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             title="Overdue Payments"
-            value="0"
+            value={
+              isLoading ? '...' : stats?.overduePayments?.toString() || '0'
+            }
             icon={<Warning />}
             color="warning"
           />
         </Grid>
       </Grid>
+
+      {error && (
+        <Card
+          sx={{ mt: 3, bgcolor: 'error.light', color: 'error.contrastText' }}
+        >
+          <CardContent>
+            <Typography variant="h6">Error loading dashboard data</Typography>
+            <Typography variant="body2">
+              Please check your connection and try refreshing the page.
+            </Typography>
+          </CardContent>
+        </Card>
+      )}
 
       <Card sx={{ mt: 3 }}>
         <CardContent>

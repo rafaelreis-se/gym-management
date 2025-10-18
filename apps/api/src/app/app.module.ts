@@ -1,6 +1,11 @@
-import { Module, MiddlewareConsumer, NestModule, ValidationPipe } from '@nestjs/common';
-import { APP_FILTER, APP_PIPE, APP_GUARD } from '@nestjs/core';
-import { ConfigModule, LoggerModule, HttpExceptionFilter } from '@gym-management/common';
+import {
+  Module,
+  MiddlewareConsumer,
+  NestModule,
+  ValidationPipe,
+} from '@nestjs/common';
+import { APP_FILTER, APP_PIPE, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ConfigModule } from '@gym-management/common';
 import { DatabaseModule } from '@gym-management/infrastructure';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -11,14 +16,18 @@ import { GraduationsModule } from '../modules/graduations/graduations.module';
 import { FinancialModule } from '../modules/financial/financial.module';
 import { ProductsModule } from '../modules/products/products.module';
 import { GuardiansModule } from '../modules/guardians/guardians.module';
+import { DashboardModule } from '../modules/dashboard/dashboard.module';
 import { RequestIdMiddleware } from '../middleware/request-id.middleware';
 import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
+import { PinoLoggerConfig } from '../config/logger.config';
+import { ApiResponseInterceptor } from '../common/interceptors/api-response.interceptor';
+import { GlobalExceptionFilter } from '../common/filters/global-exception.filter';
 
 @Module({
   imports: [
     // Core modules
     ConfigModule,
-    LoggerModule,
+    PinoLoggerConfig,
     DatabaseModule,
 
     // Domain modules
@@ -29,6 +38,7 @@ import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
     GraduationsModule,
     FinancialModule,
     ProductsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [
@@ -37,6 +47,11 @@ import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    // Global response interceptor
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ApiResponseInterceptor,
     },
     // Global validation pipe
     {
@@ -48,12 +63,16 @@ import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
         transformOptions: {
           enableImplicitConversion: true,
         },
+        exceptionFactory: (errors) => {
+          // Retorna erros de validação que serão tratados pelo GlobalExceptionFilter
+          return errors;
+        },
       }),
     },
     // Global exception filter
     {
       provide: APP_FILTER,
-      useClass: HttpExceptionFilter,
+      useClass: GlobalExceptionFilter,
     },
   ],
 })

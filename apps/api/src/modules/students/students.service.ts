@@ -1,12 +1,22 @@
-import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { Student } from '@gym-management/domain';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { CreateStudentWithGuardianDto } from './dto/create-student-with-guardian.dto';
 import { GuardiansService } from '../guardians/guardians.service';
-import { AgeCategory } from '@gym-management/common';
+import { AgeCategory, GuardianRelationship } from '@gym-management/common';
+import {
+  PaginationQueryDto,
+  PaginationUtils,
+  PaginatedResponse,
+} from '../../common/pagination/pagination.utils';
 
 @Injectable()
 export class StudentsService {
@@ -43,7 +53,8 @@ export class StudentsService {
       await this.guardiansService.linkToStudent({
         studentId: student.id,
         guardianId: guardian.id,
-        relationship: dto.guardianRelationship?.relationship || 'OTHER' as any,
+        relationship:
+          dto.guardianRelationship?.relationship || GuardianRelationship.OTHER,
         isFinanciallyResponsible:
           dto.guardianRelationship?.isFinanciallyResponsible ?? true,
         isEmergencyContact:
@@ -57,16 +68,74 @@ export class StudentsService {
     return { student };
   }
 
-  async findAll(): Promise<Student[]> {
-    return this.studentRepository.find({
-      relations: ['enrollments', 'graduations', 'studentGuardians', 'studentGuardians.guardian'],
-    });
+  async findAll(
+    paginationQuery: PaginationQueryDto,
+    baseUrl?: string
+  ): Promise<PaginatedResponse<Student>> {
+    const { page, limit, search, sortBy, sortOrder } = paginationQuery;
+
+    const queryBuilder = this.studentRepository
+      .createQueryBuilder('student')
+      .leftJoinAndSelect('student.enrollments', 'enrollments')
+      .leftJoinAndSelect('student.graduations', 'graduations')
+      .leftJoinAndSelect('student.studentGuardians', 'studentGuardians')
+      .leftJoinAndSelect('studentGuardians.guardian', 'guardian');
+
+    // Apply search filter if provided
+    if (search) {
+      queryBuilder.where(
+        '(student.fullName ILIKE :search OR student.email ILIKE :search OR student.cpf ILIKE :search)',
+        { search: `%${search}%` }
+      );
+    }
+
+    // Apply sorting
+    const sortField = sortBy || 'createdAt';
+    const sortDirection = sortOrder || 'DESC';
+
+    // Map sortBy fields to correct database column names
+    const fieldMap: Record<string, string> = {
+      name: 'fullName',
+      fullName: 'fullName',
+      email: 'email',
+      cpf: 'cpf',
+      age: 'birthDate',
+      birthDate: 'birthDate',
+      belt: 'createdAt', // Default fallback for belt-related sorting
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    };
+
+    const mappedSortField = fieldMap[sortField] || 'createdAt';
+    queryBuilder.orderBy(`student.${mappedSortField}`, sortDirection);
+
+    // Apply pagination
+    const offset = PaginationUtils.getOffset(page, limit);
+    queryBuilder.skip(offset).take(limit);
+
+    // Execute query and count
+    const [students, totalItems] = await queryBuilder.getManyAndCount();
+
+    // Create paginated response
+    return PaginationUtils.createResponse(
+      students,
+      totalItems,
+      page,
+      limit,
+      baseUrl,
+      { search, sortBy, sortOrder }
+    );
   }
 
   async findOne(id: string): Promise<Student> {
     const student = await this.studentRepository.findOne({
       where: { id },
-      relations: ['enrollments', 'graduations', 'studentGuardians', 'studentGuardians.guardian'],
+      relations: [
+        'enrollments',
+        'graduations',
+        'studentGuardians',
+        'studentGuardians.guardian',
+      ],
     });
 
     if (!student) {
@@ -76,12 +145,55 @@ export class StudentsService {
     return student;
   }
 
-  async findByGuardian(guardianId: string): Promise<Student[]> {
-    return this.studentRepository
+  async findByGuardian(
+    guardianId: string,
+    paginationQuery?: PaginationQueryDto,
+    baseUrl?: string
+  ): Promise<PaginatedResponse<Student>> {
+    const { page, limit, search, sortBy, sortOrder } = paginationQuery || {
+      page: 1,
+      limit: 10,
+      sortOrder: 'DESC' as const,
+    };
+
+    const queryBuilder = this.studentRepository
       .createQueryBuilder('student')
+      .leftJoinAndSelect('student.enrollments', 'enrollments')
+      .leftJoinAndSelect('student.graduations', 'graduations')
+      .leftJoinAndSelect('student.studentGuardians', 'studentGuardians')
+      .leftJoinAndSelect('studentGuardians.guardian', 'guardian')
       .innerJoin('student.studentGuardians', 'sg')
-      .where('sg.guardianId = :guardianId', { guardianId })
-      .getMany();
+      .where('sg.guardianId = :guardianId', { guardianId });
+
+    // Apply search filter if provided
+    if (search) {
+      queryBuilder.andWhere(
+        '(student.fullName ILIKE :search OR student.email ILIKE :search)',
+        { search: `%${search}%` }
+      );
+    }
+
+    // Apply sorting
+    const sortField = sortBy || 'createdAt';
+    const sortDirection = sortOrder || 'DESC';
+    queryBuilder.orderBy(`student.${sortField}`, sortDirection);
+
+    // Apply pagination
+    const offset = PaginationUtils.getOffset(page, limit);
+    queryBuilder.skip(offset).take(limit);
+
+    // Execute query and count
+    const [students, totalItems] = await queryBuilder.getManyAndCount();
+
+    // Create paginated response
+    return PaginationUtils.createResponse(
+      students,
+      totalItems,
+      page,
+      limit,
+      baseUrl,
+      { search, sortBy, sortOrder }
+    );
   }
 
   async findByUserId(userId: string): Promise<Student | null> {
@@ -92,7 +204,10 @@ export class StudentsService {
       .getOne();
   }
 
-  async update(id: string, updateStudentDto: UpdateStudentDto): Promise<Student> {
+  async update(
+    id: string,
+    updateStudentDto: UpdateStudentDto
+  ): Promise<Student> {
     const student = await this.findOne(id);
     Object.assign(student, updateStudentDto);
     return this.studentRepository.save(student);

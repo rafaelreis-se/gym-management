@@ -13,6 +13,7 @@ describe('EnrollmentsService', () => {
     find: jest.fn(),
     findOne: jest.fn(),
     remove: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -80,18 +81,42 @@ describe('EnrollmentsService', () => {
   });
 
   describe('findAll', () => {
-    it('should return all enrollments', async () => {
+    it('should return paginated enrollments', async () => {
       const enrollments = [
         { id: '1', studentId: '1' },
         { id: '2', studentId: '2' },
       ];
 
-      mockEnrollmentRepository.find.mockResolvedValue(enrollments);
+      const paginationQuery = {
+        page: 1,
+        limit: 10,
+        search: '',
+        sortBy: 'createdAt',
+        sortOrder: 'DESC' as const,
+      };
 
-      const result = await service.findAll();
+      const mockQueryBuilder = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest
+          .fn()
+          .mockResolvedValue([enrollments, enrollments.length]),
+      };
 
-      expect(result).toEqual(enrollments);
-      expect(mockEnrollmentRepository.find).toHaveBeenCalled();
+      mockEnrollmentRepository.createQueryBuilder.mockReturnValue(
+        mockQueryBuilder
+      );
+
+      const result = await service.findAll(paginationQuery);
+
+      expect(result.data).toEqual(enrollments);
+      expect(result.meta.totalItems).toBe(enrollments.length);
+      expect(mockEnrollmentRepository.createQueryBuilder).toHaveBeenCalledWith(
+        'enrollment'
+      );
     });
   });
 

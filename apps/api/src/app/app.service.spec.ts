@@ -1,12 +1,23 @@
 import { Test } from '@nestjs/testing';
 import { AppService } from './app.service';
+import { getDataSourceToken } from '@nestjs/typeorm';
 
 describe('AppService', () => {
   let service: AppService;
 
+  const mockDataSource = {
+    query: jest.fn(),
+  };
+
   beforeAll(async () => {
     const app = await Test.createTestingModule({
-      providers: [AppService],
+      providers: [
+        AppService,
+        {
+          provide: getDataSourceToken(),
+          useValue: mockDataSource,
+        },
+      ],
     }).compile();
 
     service = app.get<AppService>(AppService);
@@ -23,8 +34,10 @@ describe('AppService', () => {
   });
 
   describe('getHealth', () => {
-    it('should return health status', () => {
-      const result = service.getHealth();
+    it('should return health status', async () => {
+      mockDataSource.query.mockResolvedValue([1]);
+
+      const result = await service.getHealth();
       expect(result).toHaveProperty('status');
       expect(result).toHaveProperty('timestamp');
       expect(result).toHaveProperty('uptime');

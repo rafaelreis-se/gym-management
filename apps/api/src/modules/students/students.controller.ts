@@ -6,20 +6,34 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
   HttpCode,
   HttpStatus,
   UseGuards,
   ForbiddenException,
+  Req,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+import { Request } from 'express';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
+import { CreateStudentWithGuardianDto } from './dto/create-student-with-guardian.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { UserRole } from '@gym-management/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from '@gym-management/domain';
+import { User, Student } from '@gym-management/domain';
+import {
+  PaginationQueryDto,
+  PaginatedResponse,
+} from '../../common/pagination/pagination.utils';
+import { ResponseMessage } from '../../common/interceptors/api-response.interceptor';
 
 @ApiTags('students')
 @ApiBearerAuth()
@@ -33,9 +47,13 @@ export class StudentsController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Create new student (Admin only)' })
   @ApiResponse({ status: 201, description: 'Student created successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid data' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
-  create(@Body() createStudentDto: CreateStudentDto) {
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
+  @ResponseMessage('Student created successfully')
+  async create(@Body() createStudentDto: CreateStudentDto): Promise<Student> {
     return this.studentsService.create(createStudentDto);
   }
 
@@ -44,10 +62,19 @@ export class StudentsController {
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Create student with guardian (Admin only)' })
-  @ApiResponse({ status: 201, description: 'Student and guardian created successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid data' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
-  async createWithGuardian(@Body() createDto: any) {
+  @ApiResponse({
+    status: 201,
+    description: 'Student and guardian created successfully',
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
+  @ResponseMessage('Student and guardian created successfully')
+  async createWithGuardian(
+    @Body() createDto: CreateStudentWithGuardianDto
+  ): Promise<{ student: Student; guardianId?: string }> {
     return this.studentsService.createWithGuardian(createDto);
   }
 
@@ -55,30 +82,50 @@ export class StudentsController {
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.INSTRUCTOR)
   @ApiOperation({ summary: 'List all students (Admin/Instructor only)' })
-  @ApiResponse({ status: 200, description: 'Students list' })
+  @ApiResponse({ status: 200, description: 'Paginated list of students' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
-  findAll() {
-    return this.studentsService.findAll();
+  @ResponseMessage('Students retrieved successfully')
+  async findAll(
+    @Query() paginationQuery: PaginationQueryDto,
+    @Req() req: Request
+  ): Promise<PaginatedResponse<Student>> {
+    return this.studentsService.findAll(paginationQuery, req.url);
   }
 
   @Get('my-children')
   @UseGuards(RolesGuard)
   @Roles(UserRole.GUARDIAN)
   @ApiOperation({ summary: 'Get all children for current guardian' })
-  @ApiResponse({ status: 200, description: 'List of children under guardianship' })
-  async findMyChildren(@CurrentUser() user: User) {
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated list of children under guardianship',
+  })
+  @ResponseMessage('Children retrieved successfully')
+  async findMyChildren(
+    @CurrentUser() user: User,
+    @Query() paginationQuery: PaginationQueryDto,
+    @Req() req: Request
+  ): Promise<PaginatedResponse<Student>> {
     if (!user.guardianId) {
       throw new ForbiddenException('User is not linked to a guardian');
     }
-    return this.studentsService.findByGuardian(user.guardianId);
+    return this.studentsService.findByGuardian(
+      user.guardianId,
+      paginationQuery,
+      req.url
+    );
   }
 
   @Get('me')
   @UseGuards(RolesGuard)
   @Roles(UserRole.STUDENT)
   @ApiOperation({ summary: 'Get current student profile' })
-  @ApiResponse({ status: 200, description: 'Student profile' })
-  async getMyProfile(@CurrentUser() user: User) {
+  @ApiResponse({
+    status: 200,
+    description: 'Student profile retrieved successfully',
+  })
+  @ResponseMessage('Student profile retrieved successfully')
+  async getMyProfile(@CurrentUser() user: User): Promise<Student> {
     if (!user.studentId) {
       throw new ForbiddenException('User is not linked to a student');
     }
@@ -87,12 +134,24 @@ export class StudentsController {
 
   @Get(':id')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.STUDENT, UserRole.GUARDIAN)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.INSTRUCTOR,
+    UserRole.STUDENT,
+    UserRole.GUARDIAN
+  )
   @ApiOperation({ summary: 'Get student by ID' })
-  @ApiResponse({ status: 200, description: 'Student found' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Not your resource' })
+  @ApiResponse({ status: 200, description: 'Student retrieved successfully' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Access denied to this resource',
+  })
   @ApiResponse({ status: 404, description: 'Student not found' })
-  async findOne(@Param('id') id: string, @CurrentUser() user: User) {
+  @ResponseMessage('Student retrieved successfully')
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: User
+  ): Promise<Student> {
     // Admin and Instructor can see any student
     if (user.role === UserRole.ADMIN || user.role === UserRole.INSTRUCTOR) {
       return this.studentsService.findOne(id);
@@ -112,11 +171,13 @@ export class StudentsController {
         user.guardianId,
         id
       );
-      
+
       if (!hasAccess) {
-        throw new ForbiddenException('You can only access your children\'s data');
+        throw new ForbiddenException(
+          "You can only access your children's data"
+        );
       }
-      
+
       return this.studentsService.findOne(id);
     }
 
@@ -127,9 +188,17 @@ export class StudentsController {
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Update student (Admin only)' })
-  @ApiResponse({ status: 200, description: 'Student updated' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  update(@Param('id') id: string, @Body() updateStudentDto: UpdateStudentDto) {
+  @ApiResponse({ status: 200, description: 'Student updated successfully' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
+  @ApiResponse({ status: 404, description: 'Student not found' })
+  @ResponseMessage('Student updated successfully')
+  async update(
+    @Param('id') id: string,
+    @Body() updateStudentDto: UpdateStudentDto
+  ): Promise<Student> {
     return this.studentsService.update(id, updateStudentDto);
   }
 
@@ -138,9 +207,14 @@ export class StudentsController {
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Delete student (Admin only)' })
-  @ApiResponse({ status: 204, description: 'Student deleted' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  remove(@Param('id') id: string) {
+  @ApiResponse({ status: 204, description: 'Student deleted successfully' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
+  @ApiResponse({ status: 404, description: 'Student not found' })
+  @ResponseMessage('Student deleted successfully')
+  async remove(@Param('id') id: string): Promise<void> {
     return this.studentsService.remove(id);
   }
 }

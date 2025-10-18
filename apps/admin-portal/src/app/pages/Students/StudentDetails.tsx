@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -31,76 +32,45 @@ import {
 import { BeltDisplay } from '@gym-management/ui-components';
 import { BeltColor, BeltDegree, StudentStatus } from '@gym-management/types';
 import { GraduationModal } from './GraduationModal';
-
-// Mock data for demonstration
-const mockStudent = {
-  id: '1',
-  fullName: 'Maria Silva',
-  email: 'maria@example.com',
-  cpf: '123.456.789-01',
-  phone: '(11) 99999-9999',
-  emergencyPhone: '(11) 88888-8888',
-  address: 'Rua Teste, 123',
-  city: 'São Paulo',
-  state: 'SP',
-  zipCode: '01234-567',
-  status: StudentStatus.ACTIVE,
-  ageCategory: 'ADULT',
-  medicalObservations: 'No allergies',
-  currentBelt: BeltColor.BLUE,
-  currentDegree: BeltDegree.DEGREE_2,
-  enrollments: [
-    {
-      id: '1',
-      modality: 'Jiu-Jitsu',
-      startDate: '2023-01-15',
-      isActive: true,
-    },
-  ],
-  graduations: [
-    {
-      id: '1',
-      beltColor: BeltColor.WHITE,
-      beltDegree: BeltDegree.DEGREE_4,
-      graduationDate: '2023-01-15',
-      modality: 'Jiu-Jitsu',
-      grantedBy: 'Professor João',
-    },
-    {
-      id: '2',
-      beltColor: BeltColor.BLUE,
-      beltDegree: BeltDegree.NONE,
-      graduationDate: '2024-01-15',
-      modality: 'Jiu-Jitsu',
-      grantedBy: 'Professor João',
-    },
-    {
-      id: '3',
-      beltColor: BeltColor.BLUE,
-      beltDegree: BeltDegree.DEGREE_2,
-      graduationDate: '2024-08-10',
-      modality: 'Jiu-Jitsu',
-      grantedBy: 'Professor João',
-    },
-  ],
-  guardians: [
-    {
-      id: '1',
-      fullName: 'João Silva',
-      relationship: 'Father',
-      phone: '(11) 97777-7777',
-      isFinanciallyResponsible: true,
-    },
-  ],
-};
+import { studentsService } from '../../services/students.service';
+import { CircularProgress, Alert } from '@mui/material';
 
 export const StudentDetailsPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [graduationModalOpen, setGraduationModalOpen] = useState(false);
+  const queryClient = useQueryClient();
 
-  // TODO: Fetch student data from API
-  const student = mockStudent;
+  // Fetch student data from API
+  const {
+    data: studentResponse,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['student', id],
+    queryFn: () => studentsService.getById(id as string),
+    enabled: !!id,
+  });
+
+  const student = studentResponse?.data;
+
+  // Get current graduation (latest graduation)
+  const getCurrentGraduation = () => {
+    if (!student?.graduations || student.graduations.length === 0) {
+      return null;
+    }
+
+    // Sort graduations by date and get the most recent one
+    const sortedGraduations = [...student.graduations].sort(
+      (a, b) =>
+        new Date(b.graduationDate).getTime() -
+        new Date(a.graduationDate).getTime()
+    );
+
+    return sortedGraduations[0];
+  };
+
+  const currentGraduation = getCurrentGraduation();
 
   const getStatusColor = (status: StudentStatus) => {
     switch (status) {
@@ -117,9 +87,45 @@ export const StudentDetailsPage: React.FC = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight={400}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box p={3}>
+        <Alert severity="error">
+          Error loading student details. Please try again.
+        </Alert>
+      </Box>
+    );
+  }
+
+  if (!student) {
+    return (
+      <Box p={3}>
+        <Alert severity="warning">Student not found.</Alert>
+      </Box>
+    );
+  }
+
   return (
     <>
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+      <Box
+        display="flex"
+        alignItems="center"
+        justifyContent="space-between"
+        mb={3}
+      >
         <Box display="flex" alignItems="center" gap={2}>
           <Button
             startIcon={<ArrowBack />}
@@ -156,10 +162,20 @@ export const StudentDetailsPage: React.FC = () => {
         <Grid item xs={12} md={8}>
           <Card>
             <CardContent>
-              <Box display="flex" justifyContent="space-between" alignItems="start" mb={3}>
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="start"
+                mb={3}
+              >
                 <Box>
-                  <Typography variant="h5" fontWeight={600} gutterBottom>
-                    {student.fullName}
+                  <Typography
+                    variant="h4"
+                    fontWeight={700}
+                    gutterBottom
+                    sx={{ textTransform: 'capitalize' }}
+                  >
+                    {student.fullName?.toLowerCase()}
                   </Typography>
                   <Chip
                     label={student.status}
@@ -207,7 +223,9 @@ export const StudentDetailsPage: React.FC = () => {
                       Emergency Phone
                     </Typography>
                   </Box>
-                  <Typography variant="body1">{student.emergencyPhone}</Typography>
+                  <Typography variant="body1">
+                    {student.emergencyPhone}
+                  </Typography>
                 </Grid>
 
                 <Grid item xs={12}>
@@ -218,7 +236,8 @@ export const StudentDetailsPage: React.FC = () => {
                     </Typography>
                   </Box>
                   <Typography variant="body1">
-                    {student.address}, {student.city} - {student.state}, {student.zipCode}
+                    {student.address}, {student.city} - {student.state},{' '}
+                    {student.zipCode}
                   </Typography>
                 </Grid>
 
@@ -230,7 +249,9 @@ export const StudentDetailsPage: React.FC = () => {
                         Medical Observations
                       </Typography>
                     </Box>
-                    <Typography variant="body1">{student.medicalObservations}</Typography>
+                    <Typography variant="body1">
+                      {student.medicalObservations}
+                    </Typography>
                   </Grid>
                 )}
               </Grid>
@@ -245,13 +266,34 @@ export const StudentDetailsPage: React.FC = () => {
               <Typography variant="h6" fontWeight={600} mb={3}>
                 Current Belt
               </Typography>
-              <Box display="flex" justifyContent="center">
-                <BeltDisplay
-                  beltColor={student.currentBelt}
-                  beltDegree={student.currentDegree}
-                  size="large"
-                  showLabel={true}
-                />
+              <Box
+                display="flex"
+                justifyContent="center"
+                flexDirection="column"
+                alignItems="center"
+              >
+                {currentGraduation ? (
+                  <BeltDisplay
+                    beltColor={currentGraduation.beltColor}
+                    beltDegree={currentGraduation.beltDegree}
+                    size="large"
+                    showLabel={true}
+                  />
+                ) : (
+                  <Box textAlign="center">
+                    <Typography variant="body2" color="text.secondary" mb={2}>
+                      No graduations yet
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<EmojiEvents />}
+                      onClick={() => setGraduationModalOpen(true)}
+                    >
+                      Add First Graduation
+                    </Button>
+                  </Box>
+                )}
               </Box>
             </CardContent>
           </Card>
@@ -269,7 +311,8 @@ export const StudentDetailsPage: React.FC = () => {
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {guardian.relationship}
-                      {guardian.isFinanciallyResponsible && ' • Financial Responsible'}
+                      {guardian.isFinanciallyResponsible &&
+                        ' • Financial Responsible'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {guardian.phone}
@@ -289,37 +332,54 @@ export const StudentDetailsPage: React.FC = () => {
                 Graduation History
               </Typography>
 
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Date</TableCell>
-                      <TableCell>Belt</TableCell>
-                      <TableCell>Modality</TableCell>
-                      <TableCell>Granted By</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {student.graduations.map((graduation) => (
-                      <TableRow key={graduation.id}>
-                        <TableCell>
-                          {new Date(graduation.graduationDate).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <BeltDisplay
-                            beltColor={graduation.beltColor}
-                            beltDegree={graduation.beltDegree}
-                            size="small"
-                            showLabel={false}
-                          />
-                        </TableCell>
-                        <TableCell>{graduation.modality}</TableCell>
-                        <TableCell>{graduation.grantedBy || '-'}</TableCell>
+              {student.graduations && student.graduations.length > 0 ? (
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Date</TableCell>
+                        <TableCell>Belt</TableCell>
+                        <TableCell>Modality</TableCell>
+                        <TableCell>Granted By</TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    </TableHead>
+                    <TableBody>
+                      {student.graduations.map((graduation) => (
+                        <TableRow key={graduation.id}>
+                          <TableCell>
+                            {new Date(
+                              graduation.graduationDate
+                            ).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <BeltDisplay
+                              beltColor={graduation.beltColor}
+                              beltDegree={graduation.beltDegree}
+                              size="small"
+                              showLabel={false}
+                            />
+                          </TableCell>
+                          <TableCell>{graduation.modality}</TableCell>
+                          <TableCell>{graduation.grantedBy || '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Box textAlign="center" py={4}>
+                  <Typography variant="body2" color="text.secondary" mb={2}>
+                    No graduations recorded yet
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    startIcon={<EmojiEvents />}
+                    onClick={() => setGraduationModalOpen(true)}
+                  >
+                    Add First Graduation
+                  </Button>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>
@@ -331,11 +391,11 @@ export const StudentDetailsPage: React.FC = () => {
         studentId={student.id}
         studentName={student.fullName}
         onSuccess={() => {
-          // TODO: Refresh student data
-          console.log('Graduation added successfully');
+          // Refresh student data after adding graduation
+          queryClient.invalidateQueries({ queryKey: ['student', id] });
+          setGraduationModalOpen(false);
         }}
       />
     </>
   );
 };
-

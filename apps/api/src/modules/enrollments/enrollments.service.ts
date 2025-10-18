@@ -4,6 +4,11 @@ import { Repository } from 'typeorm';
 import { Enrollment } from '@gym-management/domain';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import { UpdateEnrollmentDto } from './dto/update-enrollment.dto';
+import {
+  PaginationQueryDto,
+  PaginatedResponse,
+  PaginationUtils,
+} from '../../common/pagination/pagination.utils';
 
 @Injectable()
 export class EnrollmentsService {
@@ -17,10 +22,43 @@ export class EnrollmentsService {
     return this.enrollmentRepository.save(enrollment);
   }
 
-  async findAll(): Promise<Enrollment[]> {
-    return this.enrollmentRepository.find({
-      relations: ['student', 'plan', 'payments'],
-    });
+  async findAll(
+    paginationQuery: PaginationQueryDto
+  ): Promise<PaginatedResponse<Enrollment>> {
+    const queryBuilder = this.enrollmentRepository
+      .createQueryBuilder('enrollment')
+      .leftJoinAndSelect('enrollment.student', 'student')
+      .leftJoinAndSelect('enrollment.plan', 'plan')
+      .leftJoinAndSelect('enrollment.payments', 'payments');
+
+    // Apply search filter if provided
+    if (paginationQuery.search) {
+      const searchTerm = `%${paginationQuery.search}%`;
+      queryBuilder.where(
+        'student.name ILIKE :search OR plan.name ILIKE :search OR enrollment.status ILIKE :search',
+        { search: searchTerm }
+      );
+    }
+
+    // Apply sorting
+    const sortField = paginationQuery.sortBy || 'enrollmentDate';
+    const sortOrder = paginationQuery.sortOrder || 'DESC';
+    queryBuilder.orderBy(`enrollment.${sortField}`, sortOrder);
+
+    // Apply pagination
+    const skip = (paginationQuery.page - 1) * paginationQuery.limit;
+    queryBuilder.skip(skip).take(paginationQuery.limit);
+
+    // Execute query and get total count
+    const [items, total] = await queryBuilder.getManyAndCount();
+
+    // Return paginated response
+    return PaginationUtils.createResponse(
+      items,
+      total,
+      paginationQuery.page,
+      paginationQuery.limit
+    );
   }
 
   async findOne(id: string): Promise<Enrollment> {
@@ -57,4 +95,3 @@ export class EnrollmentsService {
     await this.enrollmentRepository.remove(enrollment);
   }
 }
-

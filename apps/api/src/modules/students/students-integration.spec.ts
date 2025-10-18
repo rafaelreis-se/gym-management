@@ -183,8 +183,8 @@ describe('Students Integration Tests', () => {
       // Verify financially responsible
       const financiallyResponsible =
         await guardiansService.findFinanciallyResponsible(student.id);
-      expect(financiallyResponsible).toHaveLength(1);
-      expect(financiallyResponsible[0].fullName).toBe('Maria Silva (Mother)');
+      expect(financiallyResponsible).toBeTruthy();
+      expect(financiallyResponsible.fullName).toBe('Maria Silva (Mother)');
     });
 
     it('should reuse existing guardian when registering second child', async () => {
@@ -289,8 +289,19 @@ describe('Students Integration Tests', () => {
       expect(guardian1.cpf).toBe('99988877766');
 
       // Verify only one guardian exists
-      const allGuardians = await guardiansService.findAll();
-      const patricias = allGuardians.filter((g) => g.cpf === '99988877766');
+      const paginationQuery = {
+        page: 1,
+        limit: 100,
+        search: '',
+        sortBy: 'fullName',
+        sortOrder: 'ASC' as const,
+      };
+      const allGuardiansResponse = await guardiansService.findAll(
+        paginationQuery
+      );
+      const patricias = allGuardiansResponse.data.filter(
+        (g) => g.cpf === '99988877766'
+      );
       expect(patricias).toHaveLength(1);
     });
   });
@@ -601,8 +612,19 @@ describe('Students Integration Tests', () => {
       expect(result1.guardianId).toBe(result2.guardianId);
 
       // Verify only one guardian exists with that CPF
-      const allGuardians = await guardiansService.findAll();
-      const robertos = allGuardians.filter((g) => g.cpf === '33333333333');
+      const paginationQuery2 = {
+        page: 1,
+        limit: 100,
+        search: '',
+        sortBy: 'fullName',
+        sortOrder: 'ASC' as const,
+      };
+      const allGuardiansResponse2 = await guardiansService.findAll(
+        paginationQuery2
+      );
+      const robertos = allGuardiansResponse2.data.filter(
+        (g) => g.cpf === '33333333333'
+      );
       expect(robertos).toHaveLength(1);
 
       // Verify guardian has both children

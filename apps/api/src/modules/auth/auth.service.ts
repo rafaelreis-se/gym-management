@@ -96,7 +96,10 @@ export class AuthService {
   /**
    * Set password on first access
    */
-  async setPassword(userId: string, setPasswordDto: SetPasswordDto): Promise<void> {
+  async setPassword(
+    userId: string,
+    setPasswordDto: SetPasswordDto
+  ): Promise<void> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
 
     if (!user) {
@@ -190,11 +193,65 @@ export class AuthService {
   }
 
   /**
+   * Get development tokens for all default users (Development only)
+   */
+  async getDevTokens() {
+    if (process.env['NODE_ENV'] === 'production') {
+      throw new BadRequestException(
+        'Development tokens not available in production'
+      );
+    }
+
+    const defaultUsers = await this.userRepository.find({
+      where: [
+        { email: 'admin@gym.local' },
+        { email: 'instructor@gym.local' },
+        { email: 'student@gym.local' },
+        { email: 'guardian@gym.local' },
+      ],
+    });
+
+    const tokens = await Promise.all(
+      defaultUsers.map(async (user) => {
+        const accessToken = this.tokenService.generateAccessToken(user);
+        const refreshTokenEntity = await this.tokenService.generateRefreshToken(
+          user
+        );
+
+        return {
+          role: user.role,
+          email: user.email,
+          accessToken,
+          refreshToken: refreshTokenEntity.token,
+        };
+      })
+    );
+
+    return {
+      message: '🔑 Development tokens generated successfully',
+      note: '⚠️ Only use these tokens in development environment',
+      tokens,
+      usage: {
+        insomnia: 'Copy the accessToken and paste in the auth_token variable',
+        curl: 'curl -H "Authorization: Bearer <accessToken>" <endpoint>',
+        swagger: 'Click "Authorize" and enter "Bearer <accessToken>"',
+      },
+    };
+  }
+
+  /**
+   * Validate password strength
+   */
+  validatePasswordStrength(password: string) {
+    return this.passwordService.validatePasswordStrength(password);
+  }
+
+  /**
    * Remove sensitive data from user object
    */
   private sanitizeUser(user: User) {
     const { passwordHash, ...sanitized } = user;
+    void passwordHash; // Explicitly ignore this variable
     return sanitized;
   }
 }
-

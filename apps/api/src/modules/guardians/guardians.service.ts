@@ -5,6 +5,11 @@ import { Guardian, StudentGuardian } from '@gym-management/domain';
 import { CreateGuardianDto } from './dto/create-guardian.dto';
 import { UpdateGuardianDto } from './dto/update-guardian.dto';
 import { LinkGuardianToStudentDto } from './dto/link-guardian-to-student.dto';
+import {
+  PaginationQueryDto,
+  PaginatedResponse,
+  PaginationUtils,
+} from '../../common/pagination/pagination.utils';
 
 @Injectable()
 export class GuardiansService {
@@ -20,10 +25,55 @@ export class GuardiansService {
     return this.guardianRepository.save(guardian);
   }
 
-  async findAll(): Promise<Guardian[]> {
-    return this.guardianRepository.find({
-      relations: ['studentGuardians', 'studentGuardians.student'],
-    });
+  async findAll(
+    paginationQuery: PaginationQueryDto
+  ): Promise<PaginatedResponse<Guardian>> {
+    const queryBuilder = this.guardianRepository
+      .createQueryBuilder('guardian')
+      .leftJoinAndSelect('guardian.studentGuardians', 'studentGuardian')
+      .leftJoinAndSelect('studentGuardian.student', 'student');
+
+    // Apply search filter if provided
+    if (paginationQuery.search) {
+      const searchTerm = `%${paginationQuery.search}%`;
+      queryBuilder.where(
+        'guardian.fullName ILIKE :search OR guardian.cpf ILIKE :search OR guardian.email ILIKE :search',
+        { search: searchTerm }
+      );
+    }
+
+    // Apply sorting
+    const sortField = paginationQuery.sortBy || 'fullName';
+    const sortOrder = paginationQuery.sortOrder || 'ASC';
+
+    // Map sortBy fields to correct database column names
+    const fieldMap: Record<string, string> = {
+      name: 'fullName',
+      fullName: 'fullName',
+      email: 'email',
+      cpf: 'cpf',
+      phone: 'phone',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    };
+
+    const mappedSortField = fieldMap[sortField] || 'fullName';
+    queryBuilder.orderBy(`guardian.${mappedSortField}`, sortOrder);
+
+    // Apply pagination
+    const skip = (paginationQuery.page - 1) * paginationQuery.limit;
+    queryBuilder.skip(skip).take(paginationQuery.limit);
+
+    // Execute query and get total count
+    const [items, total] = await queryBuilder.getManyAndCount();
+
+    // Return paginated response
+    return PaginationUtils.createResponse(
+      items,
+      total,
+      paginationQuery.page,
+      paginationQuery.limit
+    );
   }
 
   async findOne(id: string): Promise<Guardian> {
@@ -49,7 +99,7 @@ export class GuardiansService {
   async findOrCreate(createGuardianDto: CreateGuardianDto): Promise<Guardian> {
     // Check if guardian already exists by CPF
     const existing = await this.findByCpf(createGuardianDto.cpf);
-    
+
     if (existing) {
       return existing;
     }
@@ -58,20 +108,24 @@ export class GuardiansService {
     return this.create(createGuardianDto);
   }
 
-  async findByStudent(studentId: string): Promise<StudentGuardian[]> {
-    return this.studentGuardianRepository.find({
-      where: { studentId },
-      relations: ['guardian'],
-    });
-  }
-
-  async findFinanciallyResponsible(studentId: string): Promise<Guardian[]> {
+  async findByStudent(studentId: string): Promise<Guardian[]> {
     const relationships = await this.studentGuardianRepository.find({
-      where: { studentId, isFinanciallyResponsible: true },
+      where: { studentId },
       relations: ['guardian'],
     });
 
     return relationships.map((rel) => rel.guardian);
+  }
+
+  async findFinanciallyResponsible(
+    studentId: string
+  ): Promise<Guardian | null> {
+    const relationship = await this.studentGuardianRepository.findOne({
+      where: { studentId, isFinanciallyResponsible: true },
+      relations: ['guardian'],
+    });
+
+    return relationship ? relationship.guardian : null;
   }
 
   async linkToStudent(
@@ -109,4 +163,3 @@ export class GuardiansService {
     await this.guardianRepository.remove(guardian);
   }
 }
-
