@@ -10,4 +10,4 @@ export * from './guardian.entity';
 export * from './student-guardian.entity';
 export * from './user.entity';
 export * from './refresh-token.entity';
-
+export * from './nfse.entity';

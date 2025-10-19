@@ -17,6 +17,7 @@ import { FinancialModule } from '../modules/financial/financial.module';
 import { ProductsModule } from '../modules/products/products.module';
 import { GuardiansModule } from '../modules/guardians/guardians.module';
 import { DashboardModule } from '../modules/dashboard/dashboard.module';
+import { NfseModule } from '../modules/nfse/nfse.module';
 import { RequestIdMiddleware } from '../middleware/request-id.middleware';
 import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
 import { PinoLoggerConfig } from '../config/logger.config';
@@ -39,6 +40,7 @@ import { GlobalExceptionFilter } from '../common/filters/global-exception.filter
     FinancialModule,
     ProductsModule,
     DashboardModule,
+    NfseModule,
   ],
   controllers: [AppController],
   providers: [

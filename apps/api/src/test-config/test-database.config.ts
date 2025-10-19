@@ -12,6 +12,7 @@ import {
   Product,
   Sale,
   SaleItem,
+  Nfse,
 } from '@gym-management/domain';
 
 /**
@@ -52,6 +53,7 @@ export const getTestDatabaseConfig = (
     Product,
     Sale,
     SaleItem,
+    Nfse,
   ],
   logging: false,
 });

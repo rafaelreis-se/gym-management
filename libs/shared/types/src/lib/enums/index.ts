@@ -10,4 +10,4 @@ export * from './age-category.enum';
 export * from './guardian-relationship.enum';
 export * from './user-role.enum';
 export * from './auth-provider.enum';
-
+export * from './nfse-status.enum';

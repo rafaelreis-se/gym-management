@@ -85,12 +85,14 @@
     "@nestjs/typeorm": "^11.0.0",
     "@tanstack/react-query": "^5.90.2",
     "@types/pino": "^7.0.5",
+    "@xmldom/xmldom": "^0.8.11",
     "axios": "^1.6.0",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "fast-xml-parser": "^5.3.0",
     "fastify": "^5.6.1",
     "i18next": "^25.6.0",
     "i18next-browser-languagedetector": "^8.2.0",
@@ -112,7 +114,10 @@
     "react-toastify": "^11.0.5",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0",
-    "typeorm": "^0.3.27"
+    "typeorm": "^0.3.27",
+    "xml-crypto": "^6.1.2",
+    "xmlbuilder2": "^4.0.0",
+    "xpath": "^0.0.34"
   },
   "devDependencies": {
     "@babel/core": "^7.14.5",
